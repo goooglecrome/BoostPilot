@@ -164,7 +164,7 @@ jobs:
                   }
               }
 
-'@
+          '@
           $mainText = $mainText.Substring(0, $start) + $newMethod + "`r`n" + $mainText.Substring($end)
           Set-Content -Path $main -Value $mainText -Encoding utf8
 
