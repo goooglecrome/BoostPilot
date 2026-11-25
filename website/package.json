@@ -1,0 +1,9 @@
+{
+  "name": "boostpilot-website",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Official BoostPilot static website",
+  "devDependencies": {
+    "wrangler": "4.168.0"
+  }
+}

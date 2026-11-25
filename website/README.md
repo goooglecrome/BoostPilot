@@ -1,23 +1,28 @@
 # BoostPilot website
 
-Static marketing and download website for BoostPilot.
+Static product and downloads website for BoostPilot.
 
-## Cloudflare Pages (free plan) deployment
+## Cloudflare Workers Builds setup
 
-1. Sign in to Cloudflare and open **Workers & Pages**.
-2. Choose **Create application → Pages → Connect to Git**.
-3. Authorise GitHub and select `goooglecrome/BoostPilot`.
-4. Set the production branch to `main`.
-5. Set the **Root directory** to `website`.
-6. Choose **None** as the framework preset.
-7. Leave the build command empty and set the build output directory to `.`.
-8. Save and deploy.
+The repository is connected to a Cloudflare Worker named `boostpilot`.
 
-The website is plain HTML, CSS and JavaScript; no npm install or build step is required. Cloudflare will redeploy when files in `website/` change on `main`.
+In the Cloudflare dashboard, open **Workers & Pages → boostpilot → Settings → Builds** (or the build configuration section) and set:
+
+| Setting | Value |
+|---|---|
+| Root directory | `website` |
+| Build command | `None` / empty |
+| Deploy command | `npx wrangler deploy` |
+
+Save the settings and trigger a new deployment. The root directory must be `website`, so Wrangler reads `wrangler.jsonc` here and publishes this folder's static HTML, CSS, JavaScript and image assets.
+
+The configuration uses Workers Static Assets. Wrangler automatically uploads the files in the configured assets directory and serves them to website visitors.
 
 ## Download links
 
-- OG stable v1.2.1 installer: the official GitHub Release asset.
-- Claude Edition: currently shown as in development because its Windows build has not yet completed successfully. Add its download button only after a successful installer artifact or release is available.
+- OG stable v1.2.1 installer: official GitHub Release asset.
+- Claude Edition: shown as in development until its Windows build successfully creates an installer artifact.
 
-The preview dashboard is illustrative interface artwork, not a live screenshot or live hardware readings.
+The website is plain HTML, CSS and JavaScript; no frontend build command is required.
+
+The preview dashboard is illustrative artwork, not a live screenshot or live hardware readings.
