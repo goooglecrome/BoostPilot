@@ -29,6 +29,20 @@ jobs:
           $project = "build/source/BoostPilot-Claude/BoostPilot.csproj"
           if (-not (Test-Path $project)) { throw "Expected WPF project not found: $project" }
 
+      - name: Apply compile and SQLite runtime fixes
+        shell: pwsh
+        run: |
+          $sourceRoot = "build/source/BoostPilot-Claude"
+          $optimisations = Join-Path $sourceRoot "Core/Optimisations.cs"
+          $source = Get-Content $optimisations -Raw
+          if ($source -notmatch '(?m)^using System\.IO;') {
+            $source = $source.Replace("using System.Diagnostics;", "using System.Diagnostics;`r`nusing System.IO;")
+            Set-Content -Path $optimisations -Value $source -Encoding utf8
+          }
+          $project = Join-Path $sourceRoot "BoostPilot.csproj"
+          dotnet add $project package SourceGear.sqlite3 --version 3.50.4.5
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Set up .NET 10
         uses: actions/setup-dotnet@v4
         with:
