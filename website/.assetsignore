@@ -1,6 +1,10 @@
-# Deployment-only project files; do not expose them as public website assets.
+# Exclude tooling, repository metadata and config from public static assets.
+**/node_modules
+**/.git
+**/.wrangler
 README.md
 package.json
+package-lock.json
 wrangler.jsonc
 _headers
 .assetsignore
