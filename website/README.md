@@ -1,19 +1,20 @@
 # BoostPilot website
 
-Multi-page static website for BoostPilot.
+Static multi-page website for BoostPilot.
 
-## Pages
+Cloudflare publishes only the dedicated `public/` directory. This keeps Wrangler dependencies, package files, source archives and project configuration out of public website assets.
 
-- `index.html` — home page and feature overview
-- `downloads.html` — loads all public GitHub Releases newest-to-oldest, including downloadable release assets
-- `faq.html` — standalone FAQ page
-- `discounts.html` — official promotions information (awaiting a paid product and checkout before redeemable coupons can be enabled)
+## Website pages
 
-The Downloads page calls the public GitHub Releases API and paginates through the release history. The currently published history contains one installer release, v1.2.1. The v1.2.0 source ZIP in the repository is separately labelled as source code, not an installer. The Claude Edition is not shown as downloadable until its Windows installer has been successfully built and published.
+- `public/index.html` — home page
+- `public/downloads.html` — all public GitHub Releases, newest to oldest
+- `public/faq.html` — FAQ
+- `public/discounts.html` — discounts information
+- `public/styles.css`, `public/app.js`, `public/downloads.js` — shared presentation and page behaviour
+- `public/favicon.svg` — browser icon
+- `public/_headers` — security headers
 
-## Cloudflare Workers Builds setup
-
-The repository is connected to a Cloudflare Worker named `boostpilot`.
+## Cloudflare Workers Builds settings
 
 In **Workers & Pages → boostpilot → Settings → Builds**, use:
 
@@ -24,10 +25,8 @@ In **Workers & Pages → boostpilot → Settings → Builds**, use:
 | Build command | `None` / empty |
 | Deploy command | `npx wrangler deploy` |
 
-The `wrangler.jsonc` file configures Workers Static Assets to serve this directory. No frontend build command is required.
+The `wrangler.jsonc` file is in this directory and points Workers Static Assets at `./public`. The website does not require a frontend build step.
 
-## Discount codes
+The Downloads page reads public GitHub Releases, sorts non-draft releases newest to oldest, and links attached installer assets directly. Source archives are labelled separately from installers.
 
-No checkout or paid product is currently configured. The Discounts page explains this honestly rather than offering inactive codes. Add secure, server-side coupon validation only after the product, price and checkout provider have been chosen. Never implement discount validation solely in browser JavaScript.
-
-The dashboard artwork is illustrative, not live hardware readings.
+No paid product or checkout is configured yet, so discount codes are not active.
