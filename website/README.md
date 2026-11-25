@@ -14,6 +14,12 @@ Cloudflare publishes only the dedicated `public/` directory. This keeps Wrangler
 - `public/favicon.svg` — browser icon
 - `public/_headers` — security headers
 
+## Published versions
+
+- OG stable: v1.2.1 (`BoostPilot-Setup.exe`)
+- Beta pre-release: v0.2.0-beta.1 (`BoostPilot-Beta-Setup.exe`), built from the `beta` branch. Beta installs separately from OG.
+- The Downloads page reads public GitHub Releases, sorts non-draft releases newest to oldest, and links attached installer assets directly. Beta pre-releases are included.
+
 ## Cloudflare Workers Builds settings
 
 In **Workers & Pages → boostpilot → Settings → Builds**, use:
@@ -23,10 +29,8 @@ In **Workers & Pages → boostpilot → Settings → Builds**, use:
 | Production branch | `main` |
 | Root directory | `website` |
 | Build command | `None` / empty |
-| Deploy command | `npx wrangler deploy` |
+| Deploy command | `npx wrangler deploy --config ./wrangler.jsonc --assets ./public` |
 
-The `wrangler.jsonc` file is in this directory and points Workers Static Assets at `./public`. The website does not require a frontend build step.
-
-The Downloads page reads public GitHub Releases, sorts non-draft releases newest to oldest, and links attached installer assets directly. Source archives are labelled separately from installers.
+The `wrangler.jsonc` file is in this directory and points Workers Static Assets at `./public`.
 
 No paid product or checkout is configured yet, so discount codes are not active.
