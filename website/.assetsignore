@@ -1,0 +1,6 @@
+# Deployment-only project files; do not expose them as public website assets.
+README.md
+package.json
+wrangler.jsonc
+_headers
+.assetsignore

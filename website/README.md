@@ -14,7 +14,7 @@ In the Cloudflare dashboard, open **Workers & Pages → boostpilot → Settings 
 | Build command | `None` / empty |
 | Deploy command | `npx wrangler deploy` |
 
-Save the settings and trigger a new deployment. The root directory must be `website`, so Wrangler reads `wrangler.jsonc` here and publishes this folder's static HTML, CSS, JavaScript and image assets.
+Save the settings and trigger a new deployment. The root directory must be `website`, so Wrangler reads `wrangler.jsonc` here and publishes the website's static HTML, CSS, JavaScript and image assets. The `.assetsignore` file keeps Wrangler configuration and project notes out of the public asset list.
 
 The configuration uses Workers Static Assets. Wrangler automatically uploads the files in the configured assets directory and serves them to website visitors.
 
