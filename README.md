@@ -4,6 +4,10 @@
 
 This repository contains two separate Windows applications. The original BoostPilot remains the primary app and keeps its own installer and update channel.
 
+## BoostPilot website
+
+The static product and downloads website is in `website/`. It is ready to deploy with Cloudflare Pages. See `website/README.md` for the setup steps; set the Pages root directory to `website`, use no build command, and use `.` as the build output directory.
+
 ## Original BoostPilot (OG)
 
 The original source project is packaged as `BoostPilot_SourceOnly_v1.2.0.zip`.
