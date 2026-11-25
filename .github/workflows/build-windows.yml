@@ -41,6 +41,7 @@ jobs:
           $version = "1.2.1"
 
           Set-Content -Path "build/VERSION" -Value $version -Encoding ascii
+          "BOOSTPILOT_VERSION=$version" >> $env:GITHUB_ENV
           $projectText = Get-Content $project -Raw
           $projectText = [regex]::Replace($projectText, '<Version>[^<]+</Version>', "<Version>$version</Version>", 1)
           Set-Content -Path $project -Value $projectText -Encoding utf8
