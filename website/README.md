@@ -1,28 +1,33 @@
 # BoostPilot website
 
-Static product and downloads website for BoostPilot.
+Multi-page static website for BoostPilot.
+
+## Pages
+
+- `index.html` — home page and feature overview
+- `downloads.html` — loads all public GitHub Releases newest-to-oldest, including downloadable release assets
+- `faq.html` — standalone FAQ page
+- `discounts.html` — official promotions information (awaiting a paid product and checkout before redeemable coupons can be enabled)
+
+The Downloads page calls the public GitHub Releases API and paginates through the release history. The currently published history contains one installer release, v1.2.1. The v1.2.0 source ZIP in the repository is separately labelled as source code, not an installer. The Claude Edition is not shown as downloadable until its Windows installer has been successfully built and published.
 
 ## Cloudflare Workers Builds setup
 
 The repository is connected to a Cloudflare Worker named `boostpilot`.
 
-In the Cloudflare dashboard, open **Workers & Pages → boostpilot → Settings → Builds** (or the build configuration section) and set:
+In **Workers & Pages → boostpilot → Settings → Builds**, use:
 
 | Setting | Value |
 |---|---|
+| Production branch | `main` |
 | Root directory | `website` |
 | Build command | `None` / empty |
 | Deploy command | `npx wrangler deploy` |
 
-Save the settings and trigger a new deployment. The root directory must be `website`, so Wrangler reads `wrangler.jsonc` here and publishes the website's static HTML, CSS, JavaScript and image assets. The `.assetsignore` file keeps Wrangler configuration and project notes out of the public asset list.
+The `wrangler.jsonc` file configures Workers Static Assets to serve this directory. No frontend build command is required.
 
-The configuration uses Workers Static Assets. Wrangler automatically uploads the files in the configured assets directory and serves them to website visitors.
+## Discount codes
 
-## Download links
+No checkout or paid product is currently configured. The Discounts page explains this honestly rather than offering inactive codes. Add secure, server-side coupon validation only after the product, price and checkout provider have been chosen. Never implement discount validation solely in browser JavaScript.
 
-- OG stable v1.2.1 installer: official GitHub Release asset.
-- Claude Edition: shown as in development until its Windows build successfully creates an installer artifact.
-
-The website is plain HTML, CSS and JavaScript; no frontend build command is required.
-
-The preview dashboard is illustrative artwork, not a live screenshot or live hardware readings.
+The dashboard artwork is illustrative, not live hardware readings.

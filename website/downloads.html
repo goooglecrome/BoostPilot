@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090d11">
+  <meta name="description" content="Browse every published BoostPilot installer, from the newest release back through the older releases.">
+  <title>Downloads — BoostPilot</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+  <script src="./downloads.js" defer></script>
+</head>
+<body>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="BoostPilot home">
+      <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+      <span>BOOST<span class="brand-accent">PILOT</span></span>
+    </a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav" aria-label="Open navigation"><span></span><span></span></button>
+    <nav class="main-nav" id="main-nav" aria-label="Main navigation">
+      <a class="" href="index.html">Home</a>
+      <a href="index.html#features">Features</a>
+      <a class="active" href="downloads.html">Downloads</a>
+      <a class="" href="faq.html">FAQ</a>
+      <a class="" href="discounts.html">Discounts</a>
+      <a class="nav-github" href="https://github.com/goooglecrome/BoostPilot" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+  <main>
+    <section class="inner-hero section-wrap">
+      <div class="eyebrow"><span class="pulse-dot"></span> OFFICIAL RELEASES</div>
+      <h1>Find your <span class="gradient-text">version.</span></h1>
+      <p class="inner-lede">Browse BoostPilot downloads, starting with the latest release and continuing through the older versions. Every installer link points to the official BoostPilot GitHub repository.</p>
+      <div class="breadcrumb"><a href="index.html">Home</a><span>/</span><span>Downloads</span></div>
+    </section>
+
+    <section class="release-section section-wrap">
+      <div class="release-toolbar">
+        <div><div class="eyebrow">VERSION HISTORY</div><h2>All published downloads</h2></div>
+        <span class="history-order">NEWEST <span aria-hidden="true">↓</span> OLDEST</span>
+      </div>
+      <div id="releases-list" class="release-list" aria-live="polite">
+        <article class="release-card">
+          <div class="release-card-header"><span class="status-label status-stable"><i></i> LATEST STABLE</span><span class="version-label">v1.2.1</span></div>
+          <h3>BoostPilot 1.2.1</h3>
+          <p>Loading the official release history…</p>
+          <a class="button button-primary" href="https://github.com/goooglecrome/BoostPilot/releases/tag/v1.2.1">Open release <span aria-hidden="true">↗</span></a>
+        </article>
+      </div>
+      <p class="api-note" id="release-status">Checking the official GitHub Releases list…</p>
+      <div class="history-link"><a class="button button-quiet" href="https://github.com/goooglecrome/BoostPilot/releases" target="_blank" rel="noreferrer">View complete GitHub release history <span aria-hidden="true">↗</span></a></div>
+    </section>
+
+    <section class="source-archive section-wrap">
+      <div class="source-archive-card">
+        <div class="source-archive-copy">
+          <div class="eyebrow">EARLIER SOURCE FILE</div>
+          <h2>BoostPilot v1.2.0 source archive</h2>
+          <p>This is an earlier source-code package, not a ready-to-install Windows program. Most users should download the latest stable installer above.</p>
+          <span class="archive-meta">ZIP SOURCE ARCHIVE · NOT AN INSTALLER</span>
+        </div>
+        <a class="button button-quiet" href="https://github.com/goooglecrome/BoostPilot/raw/refs/heads/main/BoostPilot_SourceOnly_v1.2.0.zip">Download source ZIP <span aria-hidden="true">↓</span></a>
+      </div>
+    </section>
+
+    <section class="edition-section section-wrap">
+      <div class="edition-card">
+        <div><span class="status-label status-preview"><i></i> IN DEVELOPMENT</span><h2>BoostPilot Claude Edition</h2><p>A separate version with its own interface, setup wizard and restore centre. Its installer is not available yet because the Windows build still needs fixes.</p></div>
+        <a class="release-notes" href="https://github.com/goooglecrome/BoostPilot/tree/main/ClaudeEdition" target="_blank" rel="noreferrer">View its source code <span aria-hidden="true">↗</span></a>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <a class="brand footer-brand" href="index.html"><span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span><span>BOOST<span class="brand-accent">PILOT</span></span></a>
+    <p>Independent Windows PC software project.</p>
+    <div class="footer-links"><a href="https://github.com/goooglecrome/BoostPilot" target="_blank" rel="noreferrer">GitHub</a><a href="downloads.html">Downloads</a><a href="https://github.com/goooglecrome/BoostPilot/issues" target="_blank" rel="noreferrer">Support</a></div>
+    <small>© <span id="year">2026</span> BoostPilot. All rights reserved.</small>
+  </footer></body>
+</html>
