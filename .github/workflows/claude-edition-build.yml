@@ -1,0 +1,71 @@
+name: Build BoostPilot Claude Edition
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - "ClaudeEdition/**"
+      - ".github/workflows/claude-edition-build.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      APP_VERSION: "0.1.0"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Extract Claude Edition source
+        shell: pwsh
+        run: |
+          $archive = "ClaudeEdition/BoostPilot-Claude-Source.zip"
+          if (-not (Test-Path $archive)) { throw "Claude Edition source archive is missing." }
+          Expand-Archive -Path $archive -DestinationPath "build/source" -Force
+          $project = "build/source/BoostPilot-Claude/BoostPilot.csproj"
+          if (-not (Test-Path $project)) { throw "Expected WPF project not found: $project" }
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore and publish self-contained app
+        shell: pwsh
+        run: |
+          $project = "build/source/BoostPilot-Claude/BoostPilot.csproj"
+          dotnet restore $project
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet publish $project -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o "build/artifacts/publish"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path "build/artifacts/publish/BoostPilotClaude.exe")) {
+            throw "Expected executable BoostPilotClaude.exe was not produced."
+          }
+
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build separate Claude Edition installer
+        shell: pwsh
+        run: |
+          $compiler = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6/ISCC.exe"
+          if (-not (Test-Path $compiler)) { throw "Inno Setup compiler was not found." }
+          $publishDir = (Resolve-Path "build/artifacts/publish").Path
+          $outputDir = (New-Item -ItemType Directory -Path "build/artifacts" -Force).FullName
+          & $compiler "/DAppVersion=$env:APP_VERSION" "/DPublishDir=$publishDir" "/DOutputDir=$outputDir" "ClaudeEdition/installer/BoostPilot-Claude.iss"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path "build/artifacts/BoostPilot-Claude-Setup.exe")) {
+            throw "Claude Edition installer was not created."
+          }
+
+      - name: Upload separate installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BoostPilot-Claude-Edition-Installer
+          path: build/artifacts/BoostPilot-Claude-Setup.exe
+          if-no-files-found: error
+          retention-days: 90
