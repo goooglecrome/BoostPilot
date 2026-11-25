@@ -1,0 +1,109 @@
+name: Build BoostPilot Beta
+
+on:
+  push:
+    branches: [ beta ]
+    paths:
+      - "BoostPilot-Beta/**"
+      - ".github/workflows/build-beta.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and package Windows beta
+    runs-on: windows-latest
+    env:
+      APP_VERSION: "0.2.0-beta.1"
+
+    steps:
+      - name: Check out beta branch
+        uses: actions/checkout@v4
+        with:
+          ref: beta
+          fetch-depth: 0
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Extract and verify source archive
+        shell: pwsh
+        run: |
+          $archive = "BoostPilot-Beta/BoostPilot-Beta-Source.zip"
+          if (-not (Test-Path $archive)) { throw "Beta source archive is missing." }
+          $expected = "21dffd045e2e32b8d4f549f6495d0dc43db3b4460cf94c014b4b2cafbff000df"
+          $actual = (Get-FileHash -Path $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) { throw "Source archive integrity check failed. Expected $expected, received $actual." }
+          Expand-Archive -Path $archive -DestinationPath "build/source" -Force
+          $project = "build/source/BoostPilot-Beta/BoostPilot/BoostPilot.csproj"
+          if (-not (Test-Path $project)) { throw "Expected project file was not found: $project" }
+
+      - name: Restore packages and check for high-severity advisories
+        shell: pwsh
+        run: |
+          $project = "build/source/BoostPilot-Beta/BoostPilot/BoostPilot.csproj"
+          dotnet restore $project -warnaserror:NU1903 -warnaserror:NU1904
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet list $project package --vulnerable --include-transitive | Tee-Object -FilePath "build-vulnerability-report.txt"
+
+      - name: Publish self-contained Windows x64 app
+        shell: pwsh
+        run: |
+          $project = "build/source/BoostPilot-Beta/BoostPilot/BoostPilot.csproj"
+          dotnet publish $project -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o "build/artifacts/publish"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path "build/artifacts/publish/BoostPilotBeta.exe")) {
+            throw "Expected executable BoostPilotBeta.exe was not produced."
+          }
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build separate beta installer
+        shell: pwsh
+        run: |
+          $compiler = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6/ISCC.exe"
+          if (-not (Test-Path $compiler)) { throw "Inno Setup compiler was not found." }
+          $publishDir = (Resolve-Path "build/artifacts/publish").Path
+          $outputDir = (New-Item -ItemType Directory -Path "build/artifacts" -Force).FullName
+          & $compiler "/DAppVersion=$env:APP_VERSION" "/DPublishDir=$publishDir" "/DOutputDir=$outputDir" "BoostPilot-Beta/installer/BoostPilot-Beta.iss"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path "build/artifacts/BoostPilot-Beta-Setup.exe")) {
+            throw "The separate beta installer was not created."
+          }
+
+      - name: Upload beta installer build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BoostPilot-Beta-Installer-0.2.0-beta.1
+          path: build/artifacts/BoostPilot-Beta-Setup.exe
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish beta pre-release (not latest stable)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.APP_VERSION }}
+          target_commitish: beta
+          name: BoostPilot Beta ${{ env.APP_VERSION }}
+          prerelease: true
+          make_latest: false
+          files: build/artifacts/BoostPilot-Beta-Setup.exe
+          body: |
+            BoostPilot Beta 0.2.0-beta.1
+
+            This is a separate beta build for testing. It does not replace the original BoostPilot stable release.
+
+            - Separate executable: BoostPilotBeta.exe
+            - Separate install folder: %LOCALAPPDATA%\Programs\BoostPilot Beta
+            - Separate Restore Centre database: %LOCALAPPDATA%\BoostPilot-Beta\boostpilot.db
+            - Includes hardware dashboard, setup wizard, Windows power-plan options, user startup controls and restore history.
+
+            Beta software can contain bugs. Back up important work and review each change before applying it. This build does not promise a particular FPS improvement.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
