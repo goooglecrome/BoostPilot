@@ -17,7 +17,7 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - name: Check out repository
+      - name: Check out source
         uses: actions/checkout@v4
 
       - name: Extract application source
@@ -25,28 +25,35 @@ jobs:
         run: |
           $archive = "BoostPilot_SourceOnly_v1.2.0.zip"
           if (-not (Test-Path $archive)) {
-            throw "Missing $archive. Upload the BoostPilot source ZIP to the repository root, then run this workflow again."
+            throw "Missing $archive in the repository root."
           }
           Expand-Archive -Path $archive -DestinationPath build -Force
-          if (-not (Test-Path "build/src/BoostPilot.App/BoostPilot.App.csproj")) {
-            throw "The source archive did not contain the expected WPF project."
-          }
+          $project = "build/src/BoostPilot.App/BoostPilot.App.csproj"
+          if (-not (Test-Path $project)) { throw "The source archive is missing the expected WPF project." }
 
-      - name: Patch compiler and sidebar hover handling
+      - name: Patch compiler issues, sidebar hover, version and updater
         shell: pwsh
         run: |
           $main = "build/src/BoostPilot.App/MainWindow.xaml.cs"
           $mainXaml = "build/src/BoostPilot.App/MainWindow.xaml"
           $optimizer = "build/src/BoostPilot.App/Services/OptimizerService.cs"
+          $project = "build/src/BoostPilot.App/BoostPilot.App.csproj"
+          $version = "1.2.1"
+
+          Set-Content -Path "build/VERSION" -Value $version -Encoding ascii
+          $projectText = Get-Content $project -Raw
+          $projectText = [regex]::Replace($projectText, '<Version>[^<]+</Version>', "<Version>$version</Version>", 1)
+          Set-Content -Path $project -Value $projectText -Encoding utf8
 
           $mainText = Get-Content $main -Raw
-          if ($mainText -notmatch 'using System.Net.Http;') {
-            $mainText = "using System.Net.Http;`r`n" + $mainText
+          foreach ($usingLine in @("using System.IO;", "using System.Net;", "using System.Net.Http;", "using System.Security.Cryptography;")) {
+            if ($mainText -notmatch [regex]::Escape($usingLine)) { $mainText = $usingLine + "`r`n" + $mainText }
           }
+
+          # Fix the GridLengthAnimation compile issue in the original prototype.
           $mainText = $mainText.Replace(", EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }", "")
 
-          # Check actual pointer hit-testing on every move over the window.
-          # This complements the sidebar enter/leave handlers and covers nested controls.
+          # Add a window-level pointer hit-test to complement sidebar MouseEnter/MouseLeave.
           if ($mainText -notmatch 'Window_PreviewMouseMove') {
             $anchor = '    private void Sidebar_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e) => SetSidebarExpanded(false);'
             if (-not $mainText.Contains($anchor)) { throw "Could not find sidebar event insertion point." }
@@ -66,12 +73,105 @@ jobs:
             ) -join "`r`n"
             $mainText = $mainText.Replace($anchor, $anchor + "`r`n" + $mouseHandler)
           }
+
+          # Replace the old "open the release webpage" checker with an approved
+          # download-and-launch updater. It verifies GitHub's SHA-256 digest when supplied.
+          $start = $mainText.IndexOf('    private async Task CheckForUpdatesAsync')
+          $end = $mainText.IndexOf('    private void ShowWizard', $start)
+          if ($start -lt 0 -or $end -lt 0) { throw "Could not locate the existing update-check method." }
+
+          $newMethod = @'
+              private async Task CheckForUpdatesAsync(bool showCurrent = false)
+              {
+                  const string repo = "goooglecrome/BoostPilot";
+                  const string releaseUrl = "https://api.github.com/repos/" + repo + "/releases/latest";
+                  try
+                  {
+                      using var client = new HttpClient();
+                      client.DefaultRequestHeaders.UserAgent.ParseAdd("BoostPilot-UpdateChecker/1.3");
+                      client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
+                      client.Timeout = TimeSpan.FromMinutes(5);
+
+                      using var releaseResponse = await client.GetAsync(releaseUrl, HttpCompletionOption.ResponseHeadersRead);
+                      if (releaseResponse.StatusCode == HttpStatusCode.NotFound)
+                      {
+                          if (showCurrent)
+                              MessageBox.Show("No BoostPilot release has been published yet. Update checking will work after the first GitHub Release is published.", "Updates", MessageBoxButton.OK, MessageBoxImage.Information);
+                          return;
+                      }
+                      releaseResponse.EnsureSuccessStatusCode();
+
+                      using var releaseDoc = System.Text.Json.JsonDocument.Parse(await releaseResponse.Content.ReadAsStringAsync());
+                      var root = releaseDoc.RootElement;
+                      var tag = root.TryGetProperty("tag_name", out var tagValue) ? tagValue.GetString() ?? "" : "";
+                      var current = typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "1.2.1";
+                      if (!Version.TryParse(tag.TrimStart('v'), out var latest) || !Version.TryParse(current, out var installed))
+                          throw new InvalidDataException("GitHub returned an invalid BoostPilot version.");
+
+                      if (latest <= installed)
+                      {
+                          if (showCurrent)
+                              MessageBox.Show("BoostPilot is up to date (version " + installed + ").", "Update check", MessageBoxButton.OK, MessageBoxImage.Information);
+                          return;
+                      }
+
+                      var asset = root.GetProperty("assets").EnumerateArray()
+                          .FirstOrDefault(a => string.Equals(a.GetProperty("name").GetString(), "BoostPilot-Setup.exe", StringComparison.OrdinalIgnoreCase));
+                      if (asset.ValueKind != System.Text.Json.JsonValueKind.Object)
+                      {
+                          MessageBox.Show("Version " + latest + " is published, but its BoostPilot-Setup.exe installer asset is missing.", "Update unavailable", MessageBoxButton.OK, MessageBoxImage.Warning);
+                          return;
+                      }
+
+                      var downloadUrl = asset.GetProperty("browser_download_url").GetString();
+                      if (string.IsNullOrWhiteSpace(downloadUrl) || !downloadUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                          throw new InvalidDataException("GitHub returned an invalid installer download URL.");
+                      var expectedDigest = asset.TryGetProperty("digest", out var digestValue) ? digestValue.GetString() : null;
+
+                      if (MessageBox.Show("BoostPilot " + latest + " is available (you have " + installed + "). Download and start the installer now?", "BoostPilot update available", MessageBoxButton.YesNo, MessageBoxImage.Information) != MessageBoxResult.Yes)
+                          return;
+
+                      var installerPath = Path.Combine(Path.GetTempPath(), "BoostPilot-Setup-" + latest + ".exe");
+                      using (var installerResponse = await client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead))
+                      {
+                          installerResponse.EnsureSuccessStatusCode();
+                          await using var destination = new FileStream(installerPath, FileMode.Create, FileAccess.Write, FileShare.None);
+                          await installerResponse.Content.CopyToAsync(destination);
+                      }
+
+                      if (!string.IsNullOrWhiteSpace(expectedDigest) && expectedDigest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase))
+                      {
+                          using var sha256 = SHA256.Create();
+                          await using var downloaded = File.OpenRead(installerPath);
+                          var actualDigest = Convert.ToHexString(await sha256.ComputeHashAsync(downloaded));
+                          var expected = expectedDigest.Substring("sha256:".Length);
+                          if (!string.Equals(actualDigest, expected, StringComparison.OrdinalIgnoreCase))
+                          {
+                              File.Delete(installerPath);
+                              throw new InvalidDataException("The downloaded installer did not match GitHub's SHA-256 digest. The file was deleted.");
+                          }
+                      }
+
+                      Process.Start(new ProcessStartInfo(installerPath) { UseShellExecute = true });
+                      Application.Current.Shutdown();
+                  }
+                  catch (Exception ex)
+                  {
+                      if (showCurrent)
+                          MessageBox.Show("Update check/download failed: " + ex.Message, "BoostPilot updater", MessageBoxButton.OK, MessageBoxImage.Warning);
+                      else
+                          Debug.WriteLine("BoostPilot update check failed: " + ex);
+                  }
+              }
+
+'@
+          $mainText = $mainText.Substring(0, $start) + $newMethod + "`r`n" + $mainText.Substring($end)
           Set-Content -Path $main -Value $mainText -Encoding utf8
 
           $xamlText = Get-Content $mainXaml -Raw
           if ($xamlText -notmatch 'PreviewMouseMove="Window_PreviewMouseMove"') {
             $anchorXaml = 'Loaded="Window_Loaded">'
-            if (-not $xamlText.Contains($anchorXaml)) { throw "Could not find main window XAML event insertion point." }
+            if (-not $xamlText.Contains($anchorXaml)) { throw "Could not find MainWindow XAML event insertion point." }
             $xamlText = $xamlText.Replace($anchorXaml, 'Loaded="Window_Loaded" PreviewMouseMove="Window_PreviewMouseMove">')
           }
           Set-Content -Path $mainXaml -Value $xamlText -Encoding utf8
@@ -87,12 +187,6 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
-      - name: Read app version
-        shell: pwsh
-        run: |
-          $version = (Get-Content "build/VERSION" -Raw).Trim()
-          "BOOSTPILOT_VERSION=$version" >> $env:GITHUB_ENV
-
       - name: Restore and publish self-contained app
         shell: pwsh
         run: |
@@ -104,14 +198,14 @@ jobs:
       - name: Install Inno Setup
         run: choco install innosetup --yes --no-progress
 
-      - name: Build Windows installer
+      - name: Build installer
         shell: pwsh
         run: |
           $compiler = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6/ISCC.exe"
           if (-not (Test-Path $compiler)) { throw "Inno Setup compiler was not found." }
           & $compiler "/DBuildVersion=$env:BOOSTPILOT_VERSION" "build/installer/BoostPilot.iss"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (-not (Test-Path "build/artifacts/BoostPilot-Setup.exe")) { throw "Installer output was not created." }
+          if (-not (Test-Path "build/artifacts/BoostPilot-Setup.exe")) { throw "Installer was not created." }
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
@@ -120,10 +214,13 @@ jobs:
           path: build/artifacts/BoostPilot-Setup.exe
           if-no-files-found: error
 
-      - name: Publish GitHub Release for version tags
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Publish GitHub Release and installer
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          name: ${{ env.BOOSTPILOT_VERSION }}
+          tag_name: v${{ env.BOOSTPILOT_VERSION }}
+          target_commitish: main
+          name: BoostPilot ${{ env.BOOSTPILOT_VERSION }}
           generate_release_notes: true
+          overwrite_files: true
           files: build/artifacts/BoostPilot-Setup.exe
