@@ -32,6 +32,23 @@ jobs:
             throw "The source archive did not contain the expected WPF project."
           }
 
+      - name: Patch first-build compiler issues
+        shell: pwsh
+        run: |
+          $main = "build/src/BoostPilot.App/MainWindow.xaml.cs"
+          $optimizer = "build/src/BoostPilot.App/Services/OptimizerService.cs"
+          $mainText = Get-Content $main -Raw
+          if ($mainText -notmatch 'using System.Net.Http;') {
+            $mainText = "using System.Net.Http;`r`n" + $mainText
+          }
+          $mainText = $mainText.Replace(", EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }", "")
+          Set-Content -Path $main -Value $mainText -Encoding utf8
+          $optimizerText = Get-Content $optimizer -Raw
+          if ($optimizerText -notmatch 'using System.IO;') {
+            $optimizerText = "using System.IO;`r`n" + $optimizerText
+          }
+          Set-Content -Path $optimizer -Value $optimizerText -Encoding utf8
+
       - name: Set up .NET 8
         uses: actions/setup-dotnet@v4
         with:
