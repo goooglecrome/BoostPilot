@@ -32,17 +32,51 @@ jobs:
             throw "The source archive did not contain the expected WPF project."
           }
 
-      - name: Patch first-build compiler issues
+      - name: Patch compiler and sidebar hover handling
         shell: pwsh
         run: |
           $main = "build/src/BoostPilot.App/MainWindow.xaml.cs"
+          $mainXaml = "build/src/BoostPilot.App/MainWindow.xaml"
           $optimizer = "build/src/BoostPilot.App/Services/OptimizerService.cs"
+
           $mainText = Get-Content $main -Raw
           if ($mainText -notmatch 'using System.Net.Http;') {
             $mainText = "using System.Net.Http;`r`n" + $mainText
           }
           $mainText = $mainText.Replace(", EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }", "")
+
+          # Mouse capture is checked on every window mouse move as well as the
+          # sidebar's own enter/leave events. This makes hover expansion robust
+          # when the pointer is over nested buttons or text elements.
+          $mouseHandler = @'
+          private void Window_PreviewMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+          {
+              if (Sidebar.IsMouseOver)
+              {
+                  if (!_expanded) SetSidebarExpanded(true);
+              }
+              else if (_expanded)
+              {
+                  SetSidebarExpanded(false);
+              }
+          }
+
+'@
+          if ($mainText -notmatch 'Window_PreviewMouseMove') {
+              $anchor = '    private void Sidebar_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e) => SetSidebarExpanded(false);'
+              if (-not $mainText.Contains($anchor)) { throw "Could not find sidebar event insertion point." }
+              $mainText = $mainText.Replace($anchor, $anchor + "`r`n" + $mouseHandler)
+          }
           Set-Content -Path $main -Value $mainText -Encoding utf8
+
+          $xamlText = Get-Content $mainXaml -Raw
+          if ($xamlText -notmatch 'PreviewMouseMove="Window_PreviewMouseMove"') {
+              $anchorXaml = 'Loaded="Window_Loaded">'
+              if (-not $xamlText.Contains($anchorXaml)) { throw "Could not find main window XAML event insertion point." }
+              $xamlText = $xamlText.Replace($anchorXaml, 'Loaded="Window_Loaded" PreviewMouseMove="Window_PreviewMouseMove">')
+          }
+          Set-Content -Path $mainXaml -Value $xamlText -Encoding utf8
+
           $optimizerText = Get-Content $optimizer -Raw
           if ($optimizerText -notmatch 'using System.IO;') {
             $optimizerText = "using System.IO;`r`n" + $optimizerText
