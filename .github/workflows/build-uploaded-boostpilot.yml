@@ -5,6 +5,7 @@ on:
     branches: [ main ]
     paths:
       - "BoostPilot-v1.3.0.zip"
+      - ".github/workflows/build-uploaded-boostpilot.yml"
   workflow_dispatch:
 
 permissions:
@@ -41,8 +42,25 @@ jobs:
           if (-not (Test-Path $project)) { throw "The ZIP does not contain BoostPilot/BoostPilot.csproj." }
           if (-not (Test-Path $installer)) { throw "The ZIP does not contain the Inno Setup installer script." }
 
-          # The uploaded project says 0.3.0. Publish it as the next OG release after 1.2.1.
+          # The uploaded source uses FileInfo and EnumerationOptions. Add the explicit
+          # System.IO namespace so the WPF project compiles consistently on the runner.
+          $optimisations = Join-Path $appRoot "Core/Optimisations.cs"
+          if (-not (Test-Path $optimisations)) { throw "Core/Optimisations.cs is missing." }
+          $optimisationsText = [IO.File]::ReadAllText($optimisations)
+          if ($optimisationsText -notmatch '(?m)^using System\.IO;') {
+            $optimisationsText = "using System.IO;`r`n" + $optimisationsText
+            [IO.File]::WriteAllText($optimisations, $optimisationsText, [Text.UTF8Encoding]::new($false))
+          }
+
+          # Override the older vulnerable transitive SQLitePCLRaw dependency.
+          # Version 2.1.14 is newer than the affected <= 2.1.11 range.
           $projectText = [IO.File]::ReadAllText($project)
+          if ($projectText -notmatch 'SQLitePCLRaw\.bundle_e_sqlite3') {
+            $sqliteReference = '  <ItemGroup><PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.14" /></ItemGroup>'
+            $projectText = $projectText.Replace('</Project>', $sqliteReference + "`r`n</Project>")
+          }
+
+          # The uploaded project says 0.3.0. Publish it as the next OG release after 1.2.1.
           $projectText = [regex]::Replace($projectText, '<Version>[^<]+</Version>', '<Version>1.3.0</Version>', 1)
           [IO.File]::WriteAllText($project, $projectText, [Text.UTF8Encoding]::new($false))
 
