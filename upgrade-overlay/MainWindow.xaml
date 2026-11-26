@@ -1,0 +1,337 @@
+<Window x:Class="BoostPilot.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:BoostPilot"
+        Title="BoostPilot" Icon="Assets/boostpilot.ico" Width="1460" Height="920" MinWidth="1120" MinHeight="720"
+        Background="#07111D" Foreground="#EAF2FC" FontFamily="Segoe UI"
+        Loaded="AppWindow_Loaded" Closing="AppWindow_Closing">
+  <Window.Resources>
+    <SolidColorBrush x:Key="Accent" Color="#63E6B5"/>
+    <SolidColorBrush x:Key="AccentSoft" Color="#153B36"/>
+    <SolidColorBrush x:Key="Page" Color="#07111D"/>
+    <SolidColorBrush x:Key="Panel" Color="#101E2E"/>
+    <SolidColorBrush x:Key="PanelRaised" Color="#14253A"/>
+    <SolidColorBrush x:Key="BorderBrush" Color="#263B53"/>
+    <SolidColorBrush x:Key="Muted" Color="#91A5BC"/>
+    <Style x:Key="Card" TargetType="Border">
+      <Setter Property="Background" Value="{StaticResource Panel}"/>
+      <Setter Property="CornerRadius" Value="15"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="20"/>
+      <Setter Property="Margin" Value="0,0,12,12"/>
+    </Style>
+    <Style x:Key="Label" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style x:Key="Value" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="#F0F6FF"/>
+      <Setter Property="FontSize" Value="23"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+      <Setter Property="Margin" Value="0,8,0,0"/>
+    </Style>
+    <Style TargetType="{x:Type Button}">
+      <Setter Property="Padding" Value="15,10"/>
+      <Setter Property="Margin" Value="0,0,8,8"/>
+      <Setter Property="Background" Value="#172A40"/>
+      <Setter Property="Foreground" Value="#EAF2FC"/>
+      <Setter Property="BorderBrush" Value="#304A65"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="{x:Type Button}">
+            <Border x:Name="Surface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Surface" Property="Background" Value="#203B52"/>
+                <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Accent}"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Opacity" Value="0.76"/></Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Surface" Property="Opacity" Value="0.38"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="PrimaryButton" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Background" Value="#1D5949"/>
+      <Setter Property="BorderBrush" Value="#388F75"/>
+      <Setter Property="Foreground" Value="#E8FFF6"/>
+    </Style>
+    <Style x:Key="NavItem" TargetType="RadioButton">
+      <Setter Property="Foreground" Value="#9DB0C6"/>
+      <Setter Property="Height" Value="48"/>
+      <Setter Property="Margin" Value="0,2,0,2"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="RadioButton">
+            <Border x:Name="Root" Background="Transparent" CornerRadius="9" Padding="0">
+              <Grid>
+                <Border x:Name="Bar" Width="3" HorizontalAlignment="Left" Margin="0,9,0,9" CornerRadius="0,2,2,0" Background="{StaticResource Accent}" Visibility="Collapsed"/>
+                <Path Data="{Binding (local:NavIcon.Data), RelativeSource={RelativeSource TemplatedParent}}" Stroke="{TemplateBinding Foreground}" StrokeThickness="1.75"
+                      StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Stretch="Uniform" Width="21" Height="21" HorizontalAlignment="Left" Margin="17,0,0,0"/>
+                <TextBlock Text="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Margin="55,0,6,0"/>
+              </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Root" Property="Background" Value="#14263A"/><Setter Property="Foreground" Value="#F3F8FF"/></Trigger>
+              <Trigger Property="IsChecked" Value="True"><Setter Property="Foreground" Value="{StaticResource Accent}"/><Setter TargetName="Root" Property="Background" Value="#15332F"/><Setter TargetName="Bar" Property="Visibility" Value="Visible"/></Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style TargetType="{x:Type ListBox}">
+      <Setter Property="Background" Value="#0A1725"/>
+      <Setter Property="Foreground" Value="#EAF2FC"/>
+      <Setter Property="BorderBrush" Value="#263B53"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="8"/>
+    </Style>
+    <Style TargetType="{x:Type CheckBox}">
+      <Setter Property="Foreground" Value="#EAF2FC"/>
+      <Setter Property="Margin" Value="0,4,0,4"/>
+    </Style>
+  </Window.Resources>
+
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="252"/>
+      <ColumnDefinition Width="*"/>
+    </Grid.ColumnDefinitions>
+
+    <!-- Fixed navigation rail: no hover-collapse, so labels stay visible. -->
+    <Border x:Name="Sidebar" Grid.Column="0" Background="#0A1725" BorderBrush="#263B53" BorderThickness="0,0,1,0" Padding="16,20">
+      <DockPanel LastChildFill="True">
+        <StackPanel DockPanel.Dock="Top">
+          <StackPanel Orientation="Horizontal" Height="55" VerticalAlignment="Center">
+            <Image Source="Assets/logo-mark.png" Width="40" Height="40" RenderOptions.BitmapScalingMode="HighQuality"/>
+            <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="BOOST" Foreground="#F0F6FF" FontSize="20" FontWeight="ExtraBold"/>
+                <TextBlock Text="PILOT" Foreground="{StaticResource Accent}" FontSize="20" FontWeight="ExtraBold"/>
+              </StackPanel>
+              <TextBlock Text="PC PERFORMANCE SUITE" Foreground="#7890A9" FontSize="8.5" FontWeight="Bold" Margin="1,1,0,0"/>
+            </StackPanel>
+          </StackPanel>
+          <Border Height="1" Background="#263B53" Margin="2,18,2,17"/>
+          <TextBlock Text="WORKSPACE" Style="{StaticResource Label}" Margin="12,0,0,9"/>
+          <RadioButton x:Name="NavWizard" Style="{StaticResource NavItem}" GroupName="nav" IsChecked="True" Content="Setup Wizard" Tag="wiz" Click="Nav_Click"
+                       local:NavIcon.Data="M12,2 L14.4,9.6 L22,12 L14.4,14.4 L12,22 L9.6,14.4 L2,12 L9.6,9.6 Z"/>
+          <RadioButton x:Name="NavDash" Style="{StaticResource NavItem}" GroupName="nav" Content="Dashboard" Tag="dash" Click="Nav_Click"
+                       local:NavIcon.Data="M3,3 H10 V10 H3 Z M14,3 H21 V8 H14 Z M14,12 H21 V21 H14 Z M3,14 H10 V21 H3 Z"/>
+          <RadioButton x:Name="NavGame" Style="{StaticResource NavItem}" GroupName="nav" Content="Games" Tag="game" Click="Nav_Click"
+                       local:NavIcon.Data="M6,8 H18 A4,4 0 0 1 22,12 V14 A3,3 0 0 1 16.8,16.1 L15,14 H9 L7.2,16.1 A3,3 0 0 1 2,14 V12 A4,4 0 0 1 6,8 Z M7,11 V14 M5.5,12.5 H8.5 M16,11.5 L16.01,11.5 M18.5,13 L18.51,13"/>
+          <RadioButton x:Name="NavHw" Style="{StaticResource NavItem}" GroupName="nav" Content="Hardware" Tag="hw" Click="Nav_Click"
+                       local:NavIcon.Data="M7,7 H17 V17 H7 Z M10,3 V7 M14,3 V7 M10,17 V21 M14,17 V21 M3,10 H7 M3,14 H7 M17,10 H21 M17,14 H21"/>
+          <RadioButton x:Name="NavOpt" Style="{StaticResource NavItem}" GroupName="nav" Content="Optimise" Tag="opt" Click="Nav_Click"
+                       local:NavIcon.Data="M4,6 H20 M4,12 H20 M4,18 H20 M8,3.5 V8.5 M15,9.5 V14.5 M10,15.5 V20.5"/>
+          <RadioButton x:Name="NavAi" Style="{StaticResource NavItem}" GroupName="nav" Content="AI Assistant" Tag="ai" Click="Nav_Click"
+                       local:NavIcon.Data="M12,3 A7,7 0 0 0 5,10 V14 A3,3 0 0 0 8,17 H9 V13 H6 M15,17 H16 A3,3 0 0 0 19,14 V10 A7,7 0 0 0 12,3 Z M9,10 H9.01 M15,10 H15.01 M9,20 H15"/>
+          <RadioButton x:Name="NavRest" Style="{StaticResource NavItem}" GroupName="nav" Content="Restore Centre" Tag="rest" Click="Nav_Click"
+                       local:NavIcon.Data="M4,12 A8,8 0 1 0 6.3,6.3 M4,4 V9 H9 M12,8 V12 L15,14"/>
+          <Border Height="1" Background="#263B53" Margin="2,18,2,16"/>
+          <TextBlock Text="SYSTEM TOOLS" Style="{StaticResource Label}" Margin="12,0,0,9"/>
+        </StackPanel>
+        <Border DockPanel.Dock="Bottom" Background="#102D2A" BorderBrush="#28574D" BorderThickness="1" CornerRadius="11" Padding="12" Margin="1,14,1,0">
+          <StackPanel>
+            <StackPanel Orientation="Horizontal">
+              <Ellipse Width="7" Height="7" Fill="{StaticResource Accent}" VerticalAlignment="Center"/>
+              <TextBlock Text="  SAFE BY DESIGN" Foreground="#91E5C7" FontSize="10" FontWeight="Bold"/>
+            </StackPanel>
+            <TextBlock Text="Reviewed Windows tweaks. No hidden overclocking or security disabling." Foreground="#A9C2BD" FontSize="10" TextWrapping="Wrap" Margin="0,7,0,0"/>
+          </StackPanel>
+        </Border>
+      </DockPanel>
+    </Border>
+
+    <!-- Main workspace -->
+    <Grid Grid.Column="1" Margin="28,22,28,18">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*"/>
+        <RowDefinition Height="Auto"/>
+      </Grid.RowDefinitions>
+
+      <Grid Grid.Row="0" Margin="0,0,0,21">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <StackPanel>
+          <TextBlock Text="BOOSTPILOT  /  CONTROL CENTER" Foreground="{StaticResource Accent}" FontSize="10" FontWeight="Bold"/>
+          <TextBlock x:Name="PageTitle" Text="Setup Wizard" FontSize="28" FontWeight="Bold" Foreground="#F0F6FF" Margin="0,5,0,1"/>
+          <TextBlock x:Name="PageSubtitle" Text="Build a profile that fits the way you use your PC." Foreground="{StaticResource Muted}" FontSize="12"/>
+        </StackPanel>
+        <Border Grid.Column="1" Background="#102D2A" BorderBrush="#28574D" BorderThickness="1" CornerRadius="20" Padding="13,8" VerticalAlignment="Center" Margin="12,0,0,0">
+          <StackPanel Orientation="Horizontal">
+            <Ellipse Width="7" Height="7" Fill="{StaticResource Accent}" VerticalAlignment="Center"/>
+            <TextBlock Text="  SYSTEM READY" Foreground="#A1EAD0" FontSize="10" FontWeight="Bold"/>
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <Grid Grid.Row="1">
+        <Grid x:Name="WizPanel">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <TextBlock x:Name="WizTitle" FontSize="25" FontWeight="Bold" Foreground="{StaticResource Accent}" Margin="4,0,0,13"/>
+          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"><StackPanel x:Name="WizBody" Margin="3,0,12,0"/></ScrollViewer>
+          <WrapPanel Grid.Row="2" Margin="3,14,0,0"><Button x:Name="WizBack" Content="Back" Click="Wiz_Back"/><Button x:Name="WizNext" Style="{StaticResource PrimaryButton}" Content="Continue" Click="Wiz_Next"/></WrapPanel>
+        </Grid>
+
+        <ScrollViewer x:Name="DashPanel" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <Border Background="#12302E" BorderBrush="#28574D" BorderThickness="1" CornerRadius="15" Padding="22" Margin="0,0,0,13">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <StackPanel>
+                  <TextBlock Text="LIVE SYSTEM OVERVIEW" Foreground="#91E5C7" FontSize="10" FontWeight="Bold"/>
+                  <TextBlock Text="Your PC at a glance." FontSize="22" FontWeight="Bold" Foreground="#F0F6FF" Margin="0,5,0,3"/>
+                  <TextBlock Text="Monitor your hardware, usage and background activity in one place." Foreground="#B7CBC8" FontSize="11"/>
+                </StackPanel>
+                <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Content="Open AI Assistant" Click="Assistant_Click" VerticalAlignment="Center" Margin="12,0,0,0"/>
+              </Grid>
+            </Border>
+            <UniformGrid Columns="3">
+              <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="CPU LOAD" Style="{StaticResource Label}"/><TextBlock x:Name="CpuText" Style="{StaticResource Value}"/></StackPanel></Border>
+              <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="GPU LOAD" Style="{StaticResource Label}"/><TextBlock x:Name="GpuText" Style="{StaticResource Value}"/></StackPanel></Border>
+              <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="MEMORY" Style="{StaticResource Label}"/><TextBlock x:Name="RamText" Style="{StaticResource Value}"/></StackPanel></Border>
+              <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="SYSTEM DRIVE" Style="{StaticResource Label}"/><TextBlock x:Name="DiskText" Style="{StaticResource Value}"/></StackPanel></Border>
+              <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="NETWORK" Style="{StaticResource Label}"/><TextBlock x:Name="NetText" Style="{StaticResource Value}"/></StackPanel></Border>
+              <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="WINDOWS · UPTIME" Style="{StaticResource Label}"/><TextBlock x:Name="SysText" Style="{StaticResource Value}" FontSize="14"/></StackPanel></Border>
+            </UniformGrid>
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="1.45*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+              <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,12,12">
+                <StackPanel>
+                  <TextBlock Text="PROCESSOR ACTIVITY" Style="{StaticResource Label}"/>
+                  <TextBlock Text="CPU usage · last 60 seconds" Foreground="#F0F6FF" FontSize="15" FontWeight="SemiBold" Margin="0,6,0,2"/>
+                  <Canvas x:Name="Graph" Height="120" ClipToBounds="True" Margin="0,8,0,0"><Polyline x:Name="CpuLine" Stroke="{StaticResource Accent}" StrokeThickness="2.5"/></Canvas>
+                  <TextBlock x:Name="MonitorStatus" Text="Waiting for first hardware sample…" Foreground="{StaticResource Muted}" FontSize="10" Margin="0,9,0,0"/>
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="1" Style="{StaticResource Card}" Margin="0,0,0,12">
+                <StackPanel>
+                  <TextBlock Text="BACKGROUND ACTIVITY" Style="{StaticResource Label}"/>
+                  <TextBlock Text="Top processes by memory" Foreground="#F0F6FF" FontSize="15" FontWeight="SemiBold" Margin="0,6,0,2"/>
+                  <TextBlock x:Name="ProcText" Margin="0,12,0,0" Foreground="#C7D5E4" TextWrapping="Wrap"/>
+                </StackPanel>
+              </Border>
+            </Grid>
+          </StackPanel>
+        </ScrollViewer>
+
+        <ScrollViewer x:Name="OptPanel" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <Border Background="#12302E" BorderBrush="#28574D" BorderThickness="1" CornerRadius="15" Padding="20" Margin="0,0,0,13">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <StackPanel>
+                  <TextBlock Text="SMART OPTIMISATION" Foreground="#91E5C7" FontSize="10" FontWeight="Bold"/>
+                  <TextBlock Text="A PC profile that fits your goal." Foreground="#F0F6FF" FontSize="20" FontWeight="Bold" Margin="0,5,0,3"/>
+                  <TextBlock Text="Choose a preset, manage startup apps and safely clean temporary files." Foreground="#B7CBC8" FontSize="11" TextWrapping="Wrap"/>
+                </StackPanel>
+                <Button Grid.Column="1" Content="Open AI Assistant" Style="{StaticResource PrimaryButton}" Click="Assistant_Click" VerticalAlignment="Center" Margin="12,0,0,0"/>
+              </Grid>
+            </Border>
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="POWER PROFILE" Style="{StaticResource Label}"/>
+                <TextBlock x:Name="ModeText" Margin="0,8,0,13" TextWrapping="Wrap" Foreground="#DCE7F5"/>
+                <WrapPanel>
+                  <Button Content="Gaming" Tag="gaming" Click="Mode_Click"/>
+                  <Button Content="Balanced" Tag="balanced" Click="Mode_Click"/>
+                  <Button Content="Power Saving" Tag="saver" Click="Mode_Click"/>
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="STARTUP APPS" Style="{StaticResource Label}"/>
+                <TextBlock Text="Choose which current-user apps start when you sign in. Unticking an app doesn't uninstall it." Foreground="{StaticResource Muted}" TextWrapping="Wrap" FontSize="11" Margin="0,6,0,9"/>
+                <StackPanel x:Name="StartupList" Margin="0,4,0,0"/>
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="TEMPORARY FILES" Style="{StaticResource Label}"/>
+                <TextBlock x:Name="TempText" Margin="0,8,0,12" Text="Not scanned yet." Foreground="#DCE7F5"/>
+                <WrapPanel><Button Content="Scan temporary files" Click="Scan_Click"/><Button Content="Clean old files" Style="{StaticResource PrimaryButton}" Click="Clean_Click"/></WrapPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+
+        <Grid x:Name="GamePanel" Visibility="Collapsed">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition/></Grid.RowDefinitions>
+          <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+            <StackPanel>
+              <TextBlock Text="GAME PROFILES" Style="{StaticResource Label}"/>
+              <TextBlock Text="Optimise per game, then restore automatically." Foreground="#F0F6FF" FontSize="19" FontWeight="Bold" Margin="0,5,0,3"/>
+              <TextBlock Text="Select a game to create a profile. BoostPilot watches for that game and reverses its profile when the game closes." Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,12"/>
+              <WrapPanel>
+                <Button Content="Scan for games" Click="ScanGames_Click"/>
+                <Button Content="Add game (.exe)" Click="AddGame_Click"/>
+                <Button Content="Smart Boost for selected" Style="{StaticResource PrimaryButton}" Click="SmartBoost_Click"/>
+                <Button Content="Remove profile" Click="RemoveProfile_Click"/>
+                <Button Content="Restore normal settings now" Click="EndSession_Click"/>
+              </WrapPanel>
+            </StackPanel>
+          </Border>
+          <TextBlock x:Name="GameStatus" Grid.Row="1" TextWrapping="Wrap" Margin="2,0,0,10" Foreground="{StaticResource Muted}"/>
+          <ListBox x:Name="GameList" Grid.Row="2"/>
+        </Grid>
+
+        <ScrollViewer x:Name="HwPanel" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+              <StackPanel>
+                <TextBlock Text="HARDWARE INSIGHTS" Style="{StaticResource Label}"/>
+                <TextBlock Text="Your components, live readings and capabilities." Foreground="#F0F6FF" FontSize="19" FontWeight="Bold" Margin="0,5,0,12"/>
+                <TextBlock x:Name="HwText" FontFamily="Consolas" TextWrapping="Wrap" Foreground="#C7D5E4" Margin="0,0,0,8"/>
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+              <TextBlock Text="Per-core CPU load, GPU memory, fan speeds, drive temperatures and battery health appear only when your hardware exposes them. Some readings require BoostPilot to run as administrator." Foreground="{StaticResource Muted}" TextWrapping="Wrap"/>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+
+        <Grid x:Name="RestPanel" Visibility="Collapsed">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition/></Grid.RowDefinitions>
+          <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+            <StackPanel>
+              <TextBlock Text="RESTORE CENTRE" Style="{StaticResource Label}"/>
+              <TextBlock Text="Review and undo supported changes." Foreground="#F0F6FF" FontSize="19" FontWeight="Bold" Margin="0,5,0,12"/>
+              <WrapPanel><Button Content="Undo selected change" Style="{StaticResource PrimaryButton}" Click="Undo_Click"/></WrapPanel>
+            </StackPanel>
+          </Border>
+          <ListBox x:Name="RestoreList" Grid.Row="1"/>
+        </Grid>
+
+        <Grid x:Name="AiPanel" Visibility="Collapsed">
+          <Border Background="#12302E" BorderBrush="#28574D" BorderThickness="1" CornerRadius="16" Padding="28" HorizontalAlignment="Stretch" VerticalAlignment="Top">
+            <StackPanel>
+              <TextBlock Text="BOOSTPILOT SMART ASSISTANT" Foreground="#91E5C7" FontSize="10" FontWeight="Bold"/>
+              <TextBlock Text="Describe what you want your PC to do." FontSize="27" FontWeight="Bold" Foreground="#F0F6FF" Margin="0,8,0,4"/>
+              <TextBlock Text="Scan your hardware, match your goal to a safe Windows profile, then review every recommended change before applying it." Foreground="#B7CBC8" FontSize="12" TextWrapping="Wrap" MaxWidth="720" Margin="0,0,0,17"/>
+              <Button Content="Launch Smart Assistant" Style="{StaticResource PrimaryButton}" Click="Assistant_Click" HorizontalAlignment="Left"/>
+              <TextBlock Text="Local analysis · Your PC details stay on this computer · Changes require your approval" Foreground="#91B6AA" FontSize="10" Margin="0,13,0,0"/>
+            </StackPanel>
+          </Border>
+        </Grid>
+      </Grid>
+
+      <DockPanel Grid.Row="2" Margin="2,14,2,0">
+        <TextBlock DockPanel.Dock="Left" Text="BOOSTPILOT  •  WINDOWS 10/11  •  REVIEW BEFORE APPLYING" Foreground="#7188A2" FontSize="9" VerticalAlignment="Center"/>
+        <TextBlock Text="Your settings are saved on this PC" Foreground="#7188A2" FontSize="9" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+      </DockPanel>
+    </Grid>
+  </Grid>
+</Window>
