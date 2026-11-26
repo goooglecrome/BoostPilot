@@ -5,11 +5,12 @@ namespace BoostPilot.Core;
 /// <summary>Per-user BoostPilot preferences. Kept separate from Windows settings and restore history.</summary>
 public sealed class AppPreferences
 {
-    public double WindowWidth { get; set; } = 1180;
-    public double WindowHeight { get; set; } = 780;
+    public double WindowWidth { get; set; } = 1460;
+    public double WindowHeight { get; set; } = 920;
     public double WindowLeft { get; set; } = -1;
     public double WindowTop { get; set; } = -1;
     public bool WindowWasMaximised { get; set; }
+    public string LastPage { get; set; } = "wiz";
     public string LastAssistantRequest { get; set; } = "";
     public string LastAssistantGoal { get; set; } = "";
     public List<string> LastAssistantSelections { get; set; } = new();
