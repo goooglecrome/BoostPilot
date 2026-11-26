@@ -69,19 +69,7 @@ jobs:
           # Route page clicks through the persistence-aware navigation controller.
           $mainWindowCodePath = Join-Path $appRoot "MainWindow.xaml.cs"
           $mainWindowCode = [IO.File]::ReadAllText($mainWindowCodePath)
-          $oldNav = @'
-              void Nav_Click(object s, RoutedEventArgs e)
-              {
-                  var t = (string)((FrameworkElement)s).Tag;
-                  WizPanel.Visibility = t == "wiz" ? Visibility.Visible : Visibility.Collapsed;
-                  GamePanel.Visibility = t == "game" ? Visibility.Visible : Visibility.Collapsed;
-                  HwPanel.Visibility = t == "hw" ? Visibility.Visible : Visibility.Collapsed;
-                  HwActive(t == "hw");
-                  DashPanel.Visibility = t == "dash" ? Visibility.Visible : Visibility.Collapsed;
-                  OptPanel.Visibility = t == "opt" ? Visibility.Visible : Visibility.Collapsed;
-                  RestPanel.Visibility = t == "rest" ? Visibility.Visible : Visibility.Collapsed;
-              }
-          '@
+          $navPattern = '(?s)    void Nav_Click\(object s, RoutedEventArgs e\)\s*\{.*?\r?\n    \}'
           $newNav = @'
               void Nav_Click(object s, RoutedEventArgs e)
               {
@@ -89,8 +77,9 @@ jobs:
                   NavigateToPage(t, true);
               }
           '@
-          if (-not $mainWindowCode.Contains($oldNav)) { throw "Could not patch the original navigation handler." }
-          $mainWindowCode = $mainWindowCode.Replace($oldNav, $newNav)
+          $navRegex = [regex]::new($navPattern)
+          $mainWindowCode = $navRegex.Replace($mainWindowCode, $newNav, 1)
+          if (-not $mainWindowCode.Contains("NavigateToPage(t, true);")) { throw "Could not patch the original navigation handler." }
           if (-not $mainWindowCode.Contains("RestoreLastPage();")) {
             $mainWindowCode = $mainWindowCode.Replace("ShowStep(0); InitGames();", "ShowStep(0); RestoreLastPage(); InitGames();")
           }
