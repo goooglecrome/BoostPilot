@@ -42,15 +42,79 @@ jobs:
           if (-not (Test-Path $project)) { throw "The ZIP does not contain BoostPilot/BoostPilot.csproj." }
           if (-not (Test-Path $installer)) { throw "The ZIP does not contain the Inno Setup installer script." }
 
-          # The uploaded source uses FileInfo and EnumerationOptions. Add the explicit
-          # System.IO namespace so the WPF project compiles consistently on the runner.
-          $optimisations = Join-Path $appRoot "Core/Optimisations.cs"
-          if (-not (Test-Path $optimisations)) { throw "Core/Optimisations.cs is missing." }
-          $optimisationsText = [IO.File]::ReadAllText($optimisations)
-          if ($optimisationsText -notmatch '(?m)^using System\.IO;') {
-            $optimisationsText = "using System.IO;`r`n" + $optimisationsText
-            [IO.File]::WriteAllText($optimisations, $optimisationsText, [Text.UTF8Encoding]::new($false))
+          # Add one global System.IO import. Several source files use Path, File,
+          # Directory, DriveInfo and file enumeration APIs without local imports.
+          $globalUsings = Join-Path $appRoot "GlobalUsings.cs"
+          [IO.File]::WriteAllText($globalUsings, "global using System.IO;`r`n", [Text.UTF8Encoding]::new($false))
+
+          # Replace ComputerInfo from Microsoft.VisualBasic.Devices with the
+          # Windows GlobalMemoryStatusEx API so the app builds without VB Forms.
+          $memoryInfo = @'
+          using System.Runtime.InteropServices;
+
+          namespace BoostPilot.Core;
+
+          internal readonly record struct MemorySnapshot(ulong TotalBytes, ulong AvailableBytes);
+
+          internal static class NativeMemoryInfo
+          {
+              [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+              private struct MemoryStatusEx
+              {
+                  public uint Length;
+                  public uint MemoryLoad;
+                  public ulong TotalPhysical;
+                  public ulong AvailablePhysical;
+                  public ulong TotalPageFile;
+                  public ulong AvailablePageFile;
+                  public ulong TotalVirtual;
+                  public ulong AvailableVirtual;
+                  public ulong AvailableExtendedVirtual;
+              }
+
+              [DllImport("kernel32.dll", SetLastError = true)]
+              [return: MarshalAs(UnmanagedType.Bool)]
+              private static extern bool GlobalMemoryStatusEx(ref MemoryStatusEx buffer);
+
+              public static MemorySnapshot Read()
+              {
+                  var status = new MemoryStatusEx { Length = (uint)Marshal.SizeOf<MemoryStatusEx>() };
+                  if (!GlobalMemoryStatusEx(ref status))
+                      return new MemorySnapshot(0, 0);
+
+                  return new MemorySnapshot(status.TotalPhysical, status.AvailablePhysical);
+              }
           }
+          '@
+          $memoryInfoPath = Join-Path $appRoot "Core/NativeMemoryInfo.cs"
+          [IO.File]::WriteAllText($memoryInfoPath, $memoryInfo, [Text.UTF8Encoding]::new($false))
+
+          $metricsPath = Join-Path $appRoot "Core/Metrics.cs"
+          $metricsText = [IO.File]::ReadAllText($metricsPath)
+          $oldMetricsMemory = @'
+                  var ci = new Microsoft.VisualBasic.Devices.ComputerInfo();
+                  double total = ci.TotalPhysicalMemory / 1073741824.0, free = ci.AvailablePhysicalMemory / 1073741824.0;
+          '@
+          $newMetricsMemory = @'
+                  var memory = NativeMemoryInfo.Read();
+                  double total = memory.TotalBytes / 1073741824.0, free = memory.AvailableBytes / 1073741824.0;
+          '@
+          if (-not $metricsText.Contains($oldMetricsMemory)) { throw "Could not locate the memory reader in Core/Metrics.cs." }
+          $metricsText = $metricsText.Replace($oldMetricsMemory, $newMetricsMemory)
+          [IO.File]::WriteAllText($metricsPath, $metricsText, [Text.UTF8Encoding]::new($false))
+
+          $wizardPath = Join-Path $appRoot "Core/Wizard.cs"
+          $wizardText = [IO.File]::ReadAllText($wizardPath)
+          $oldWizardMemory = @'
+                  var ci = new Microsoft.VisualBasic.Devices.ComputerInfo();
+          '@
+          $newWizardMemory = @'
+                  var memory = NativeMemoryInfo.Read();
+          '@
+          if (-not $wizardText.Contains($oldWizardMemory)) { throw "Could not locate the memory reader in Core/Wizard.cs." }
+          $wizardText = $wizardText.Replace($oldWizardMemory, $newWizardMemory)
+          $wizardText = $wizardText.Replace('ci.TotalPhysicalMemory / 1073741824.0', 'memory.TotalBytes / 1073741824.0')
+          [IO.File]::WriteAllText($wizardPath, $wizardText, [Text.UTF8Encoding]::new($false))
 
           # Override the older vulnerable transitive SQLitePCLRaw dependency.
           # Version 2.1.14 is newer than the affected <= 2.1.11 range.
