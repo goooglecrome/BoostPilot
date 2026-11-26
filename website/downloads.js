@@ -96,10 +96,10 @@
     status.textContent = 'Could not load the live GitHub release list right now (' + error.message + '). You can still open the official releases page below.';
     const fallback = make('article', 'release-card');
     fallback.append(make('div', 'release-card-header', 'LATEST CONFIRMED RELEASE'));
-    fallback.append(make('h3', '', 'BoostPilot OG v1.2.1'));
+    fallback.append(make('h3', '', 'BoostPilot OG v1.3.0'));
     fallback.append(make('p', 'release-date', 'Published 25 November 2026'));
-    const link = make('a', 'button button-primary', 'Download v1.2.1 ↓');
-    link.href = 'https://github.com/goooglecrome/BoostPilot/releases/download/v1.2.1/BoostPilot-Setup.exe';
+    const link = make('a', 'button button-primary', 'Download v1.3.0 ↓');
+    link.href = 'https://github.com/goooglecrome/BoostPilot/releases/download/v1.3.0/BoostPilot-Setup.exe';
     fallback.append(link);
     list.replaceChildren(fallback);
   });
