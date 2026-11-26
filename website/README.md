@@ -16,7 +16,7 @@ Cloudflare publishes only the dedicated `public/` directory. This keeps Wrangler
 
 ## Published versions
 
-- OG stable: v1.2.1 (`BoostPilot-Setup.exe`)
+- OG stable: v1.3.0 (`BoostPilot-Setup.exe`)
 - Beta pre-release: v0.2.0-beta.1 (`BoostPilot-Beta-Setup.exe`), built from the `beta` branch. Beta installs separately from OG.
 - The Downloads page reads public GitHub Releases, sorts non-draft releases newest to oldest, and links attached installer assets directly. Beta pre-releases are included.
 
