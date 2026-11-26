@@ -1,0 +1,98 @@
+<Window x:Class="BoostPilot.AssistantWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="BoostPilot AI Assistant" Width="920" Height="760" MinWidth="760" MinHeight="620"
+        WindowStartupLocation="CenterOwner" Background="#07101B" Foreground="#EAF2FC"
+        FontFamily="Segoe UI" ShowInTaskbar="False">
+  <Window.Resources>
+    <SolidColorBrush x:Key="Accent" Color="#5CF2B0"/>
+    <SolidColorBrush x:Key="Panel" Color="#101C2C"/>
+    <SolidColorBrush x:Key="Border" Color="#26384E"/>
+    <SolidColorBrush x:Key="Muted" Color="#9AADC2"/>
+    <Style TargetType="Button">
+      <Setter Property="Padding" Value="16,10"/><Setter Property="Margin" Value="0,0,8,0"/>
+      <Setter Property="Background" Value="#18283C"/><Setter Property="Foreground" Value="#ECF4FF"/>
+      <Setter Property="BorderBrush" Value="#35506B"/><Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
+        <Border x:Name="Surface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+          <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+        <ControlTemplate.Triggers>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#24405A"/><Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Accent}"/></Trigger>
+          <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Opacity" Value="0.8"/></Trigger>
+          <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Surface" Property="Opacity" Value="0.4"/></Trigger>
+        </ControlTemplate.Triggers>
+      </ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="Card" TargetType="Border">
+      <Setter Property="Background" Value="{StaticResource Panel}"/><Setter Property="BorderBrush" Value="{StaticResource Border}"/>
+      <Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="12"/><Setter Property="Padding" Value="18"/>
+    </Style>
+    <Style x:Key="SectionLabel" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource Muted}"/><Setter Property="FontSize" Value="11"/>
+      <Setter Property="FontWeight" Value="Bold"/><Setter Property="Margin" Value="0,0,0,9"/>
+    </Style>
+  </Window.Resources>
+  <Grid Margin="22">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <StackPanel Grid.Row="0" Margin="2,0,2,16">
+      <DockPanel>
+        <Border DockPanel.Dock="Right" Background="#12372F" BorderBrush="#286653" BorderThickness="1" CornerRadius="20" Padding="10,5" VerticalAlignment="Center">
+          <TextBlock Text="ON-DEVICE ASSISTANT" Foreground="#8DF4C8" FontSize="10" FontWeight="Bold"/>
+        </Border>
+        <StackPanel>
+          <TextBlock Text="BOOSTPILOT  /  SMART OPTIMISER" Foreground="#5CF2B0" FontSize="11" FontWeight="Bold"/>
+          <TextBlock Text="Tell your PC what you need." FontSize="27" FontWeight="Bold" Margin="0,5,0,0"/>
+          <TextBlock Text="BoostPilot checks your hardware, builds a tailored plan and lets you review every change before it is applied." Foreground="#9AADC2" TextWrapping="Wrap" Margin="0,5,0,0"/>
+        </StackPanel>
+      </DockPanel>
+    </StackPanel>
+
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="1.04*"/><ColumnDefinition Width="0.96*"/></Grid.ColumnDefinitions>
+      <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,9,0">
+        <Grid>
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <TextBlock Grid.Row="0" Text="YOUR INSTRUCTIONS" Style="{StaticResource SectionLabel}"/>
+          <TextBox x:Name="RequestBox" Grid.Row="1" MinHeight="118" MaxHeight="180" Padding="12" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                   Background="#0A1421" Foreground="#ECF4FF" BorderBrush="#354C65" BorderThickness="1" FontSize="13"
+                   Text="I want better gaming performance while keeping my PC stable."/>
+          <WrapPanel Grid.Row="2" Margin="0,12,0,14">
+            <Button x:Name="AnalyseButton" Content="Scan PC &amp; build plan" Click="Analyse_Click" Background="#164A3B" BorderBrush="#4DD9A4" Foreground="#DFFFF3"/>
+            <Button Content="Use gaming goal" Click="GamingExample_Click"/>
+            <Button Content="Use quieter / cooler goal" Click="CoolExample_Click"/>
+          </WrapPanel>
+          <StackPanel Grid.Row="3">
+            <TextBlock Text="WHAT THE SCAN FOUND" Style="{StaticResource SectionLabel}"/>
+            <Border Background="#0A1421" BorderBrush="#22364C" BorderThickness="1" CornerRadius="8" Padding="12">
+              <TextBlock x:Name="FindingsText" Text="Your hardware scan will appear here. The assistant reads hardware and selected Windows settings; it does not upload your PC details." TextWrapping="Wrap" Foreground="#C2D0E0"/>
+            </Border>
+            <TextBlock Text="The assistant only uses a small, reviewed list of Windows settings. It will not disable security features, force overclocks, change voltages or close programs." Foreground="#8FA4BA" FontSize="11" TextWrapping="Wrap" Margin="0,12,0,0"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <Border Grid.Column="1" Style="{StaticResource Card}" Margin="9,0,0,0">
+        <Grid>
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <TextBlock Text="RECOMMENDED CHANGES" Style="{StaticResource SectionLabel}"/>
+          <TextBlock Grid.Row="1" x:Name="PlanSummary" Text="Scan your PC to get a recommended plan." Foreground="#9AADC2" TextWrapping="Wrap" Margin="0,0,0,12"/>
+          <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="PlanPanel">
+              <TextBlock Text="No plan yet. Your changes will appear here with an explanation and a checkbox for each one." Foreground="#8FA4BA" TextWrapping="Wrap"/>
+            </StackPanel>
+          </ScrollViewer>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <DockPanel Grid.Row="2" Margin="2,16,2,0" LastChildFill="True">
+      <WrapPanel DockPanel.Dock="Right">
+        <Button x:Name="ApplyButton" Content="Apply selected changes" Click="Apply_Click" IsEnabled="False" Background="#164A3B" BorderBrush="#4DD9A4" Foreground="#DFFFF3"/>
+        <Button Content="Close" Click="Close_Click"/>
+      </WrapPanel>
+      <TextBlock x:Name="StatusText" Text="Ready · Nothing has been changed." VerticalAlignment="Center" Foreground="#9AADC2" TextWrapping="Wrap"/>
+    </DockPanel>
+  </Grid>
+</Window>
