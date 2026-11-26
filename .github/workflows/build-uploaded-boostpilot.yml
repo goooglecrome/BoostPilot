@@ -91,29 +91,18 @@ jobs:
 
           $metricsPath = Join-Path $appRoot "Core/Metrics.cs"
           $metricsText = [IO.File]::ReadAllText($metricsPath)
-          $oldMetricsMemory = @'
-                  var ci = new Microsoft.VisualBasic.Devices.ComputerInfo();
-                  double total = ci.TotalPhysicalMemory / 1073741824.0, free = ci.AvailablePhysicalMemory / 1073741824.0;
-          '@
-          $newMetricsMemory = @'
-                  var memory = NativeMemoryInfo.Read();
-                  double total = memory.TotalBytes / 1073741824.0, free = memory.AvailableBytes / 1073741824.0;
-          '@
-          if (-not $metricsText.Contains($oldMetricsMemory)) { throw "Could not locate the memory reader in Core/Metrics.cs." }
-          $metricsText = $metricsText.Replace($oldMetricsMemory, $newMetricsMemory)
+          $metricsPattern = '(?m)^\s*var ci = new Microsoft\.VisualBasic\.Devices\.ComputerInfo\(\);\r?\n\s*double total = ci\.TotalPhysicalMemory / 1073741824\.0, free = ci\.AvailablePhysicalMemory / 1073741824\.0;'
+          $metricsReplacement = "                  var memory = NativeMemoryInfo.Read();`r`n                  double total = memory.TotalBytes / 1073741824.0, free = memory.AvailableBytes / 1073741824.0;"
+          $metricsText = [regex]::Replace($metricsText, $metricsPattern, $metricsReplacement, [Text.RegularExpressions.RegexOptions]::Multiline)
+          if ($metricsText -match 'Microsoft\.VisualBasic\.Devices') { throw "The Visual Basic memory reader remains in Core/Metrics.cs." }
           [IO.File]::WriteAllText($metricsPath, $metricsText, [Text.UTF8Encoding]::new($false))
 
           $wizardPath = Join-Path $appRoot "Core/Wizard.cs"
           $wizardText = [IO.File]::ReadAllText($wizardPath)
-          $oldWizardMemory = @'
-                  var ci = new Microsoft.VisualBasic.Devices.ComputerInfo();
-          '@
-          $newWizardMemory = @'
-                  var memory = NativeMemoryInfo.Read();
-          '@
-          if (-not $wizardText.Contains($oldWizardMemory)) { throw "Could not locate the memory reader in Core/Wizard.cs." }
-          $wizardText = $wizardText.Replace($oldWizardMemory, $newWizardMemory)
+          $wizardPattern = '(?m)^\s*var ci = new Microsoft\.VisualBasic\.Devices\.ComputerInfo\(\);'
+          $wizardText = [regex]::Replace($wizardText, $wizardPattern, '                  var memory = NativeMemoryInfo.Read();', [Text.RegularExpressions.RegexOptions]::Multiline)
           $wizardText = $wizardText.Replace('ci.TotalPhysicalMemory / 1073741824.0', 'memory.TotalBytes / 1073741824.0')
+          if ($wizardText -match 'Microsoft\.VisualBasic\.Devices|ci\.TotalPhysicalMemory') { throw "The Visual Basic memory reader remains in Core/Wizard.cs." }
           [IO.File]::WriteAllText($wizardPath, $wizardText, [Text.UTF8Encoding]::new($false))
 
           # Override the older vulnerable transitive SQLitePCLRaw dependency.
