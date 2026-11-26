@@ -1,4 +1,4 @@
-name: Build BoostPilot 1.3.1 from uploaded source
+name: Build BoostPilot 1.4.0 upgraded app
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
     paths:
       - "BoostPilot-v1.3.1-source.zip"
       - ".github/workflows/build-boostpilot-v1.3.1.yml"
+      - "upgrade-overlay/**"
   workflow_dispatch:
 
 permissions:
@@ -41,6 +42,65 @@ jobs:
 
           if (-not (Test-Path $project)) { throw "The ZIP does not contain BoostPilot/BoostPilot.csproj." }
           if (-not (Test-Path $installer)) { throw "The ZIP does not contain the Inno Setup installer script." }
+
+          # Apply the source overlays that implement the real 1.4.0 upgrade.
+          $overlayRoot = Join-Path $env:GITHUB_WORKSPACE "upgrade-overlay"
+          $overlayFiles = @(
+            "AssistantWindow.xaml",
+            "AssistantWindow.xaml.cs",
+            "MainWindow.Assistant.cs",
+            "MainWindow.Persistence.cs",
+            "Core/AssistantIntent.cs",
+            "Core/AppPreferences.cs"
+          )
+          foreach ($relative in $overlayFiles) {
+            $source = Join-Path $overlayRoot $relative
+            if (-not (Test-Path $source)) { throw "Missing upgrade source file: $relative" }
+            $destination = Join-Path $appRoot $relative
+            New-Item -ItemType Directory -Force -Path (Split-Path $destination) | Out-Null
+            Copy-Item $source $destination -Force
+          }
+
+          # Refresh the existing shell while preserving its existing dashboard, game and restore screens.
+          $xamlPath = Join-Path $appRoot "MainWindow.xaml"
+          $xamlText = [IO.File]::ReadAllText($xamlPath)
+          $xamlText = $xamlText.Replace(
+            'Width="1040" Height="680" MinWidth="820"',
+            'Width="1180" Height="780" MinWidth="920" MinHeight="640" Loaded="AppWindow_Loaded" Closing="AppWindow_Closing"'
+          )
+          $themePairs = @(
+            @("#050505", "#070C14"),
+            @("#0E0E0E", "#101927"),
+            @("#1F1F1F", "#263449"),
+            @("#8A9099", "#9AAEC4"),
+            @("#111111", "#132033"),
+            @("#56FB1A", "#5CF2B0"),
+            @("#000000", "#080E17"),
+            @("#1A1A1A", "#223047"),
+            @("#101010", "#152238"),
+            @("#F2F2F2", "#ECF4FF"),
+            @("#E6E8EB", "#DCE7F5"),
+            @("#8C9199", "#99A9BE")
+          )
+          foreach ($pair in $themePairs) { $xamlText = $xamlText.Replace($pair[0], $pair[1]) }
+
+          $optIndex = $xamlText.IndexOf('<ScrollViewer x:Name="OptPanel" Visibility="Collapsed">')
+          if ($optIndex -lt 0) { throw "Could not find the Optimise page in MainWindow.xaml." }
+          $stackTag = '<StackPanel>'
+          $stackIndex = $xamlText.IndexOf($stackTag, $optIndex)
+          if ($stackIndex -lt 0) { throw "Could not find the Optimise page container." }
+          if (-not $xamlText.Contains("SMART OPTIMISATION ASSISTANT")) {
+            $assistantCard = @'
+          <Border Style="{StaticResource Card}"><StackPanel>
+            <TextBlock Text="SMART OPTIMISATION ASSISTANT" Style="{StaticResource Label}"/>
+            <TextBlock Text="Describe what you want from your PC. BoostPilot scans your hardware and prepares a change plan for you to review." Foreground="#9AAEC4" TextWrapping="Wrap" Margin="0,7,0,12"/>
+            <Button Content="Open AI Assistant" Click="Assistant_Click" HorizontalAlignment="Left"/>
+          </StackPanel></Border>
+          '@
+            $insertAt = $stackIndex + $stackTag.Length
+            $xamlText = $xamlText.Insert($insertAt, [Environment]::NewLine + $assistantCard)
+          }
+          [IO.File]::WriteAllText($xamlPath, $xamlText, [Text.UTF8Encoding]::new($false))
 
           # Add one global System.IO import. Several source files use Path, File,
           # Directory, DriveInfo and file enumeration APIs without local imports.
@@ -105,6 +165,12 @@ jobs:
           if ($wizardText -match 'Microsoft\.VisualBasic\.Devices|ci\.TotalPhysicalMemory') { throw "The Visual Basic memory reader remains in Core/Wizard.cs." }
           [IO.File]::WriteAllText($wizardPath, $wizardText, [Text.UTF8Encoding]::new($false))
 
+          # Correct the Windows Balanced plan GUID used by the profile matcher.
+          $wizardPathForPlan = Join-Path $appRoot "Core/Wizard.cs"
+          $wizardPlanText = [IO.File]::ReadAllText($wizardPathForPlan)
+          $wizardPlanText = $wizardPlanText.Replace("381b4222-f694-41f0-9685-f5bb260df5ae", "381b4222-f694-41f0-9685-ff5bb260df2e")
+          [IO.File]::WriteAllText($wizardPathForPlan, $wizardPlanText, [Text.UTF8Encoding]::new($false))
+
           # Override the older vulnerable transitive SQLitePCLRaw dependency.
           # Version 2.1.14 is newer than the affected <= 2.1.11 range.
           $projectText = [IO.File]::ReadAllText($project)
@@ -118,7 +184,7 @@ jobs:
           [IO.File]::WriteAllText($project, $projectText, [Text.UTF8Encoding]::new($false))
 
           $installerText = [IO.File]::ReadAllText($installer)
-          $installerText = [regex]::Replace($installerText, '#define\s+AppVersion\s+"[^"]+"', '#define AppVersion "1.3.1"', 1)
+          $installerText = [regex]::Replace($installerText, '#define\s+AppVersion\s+"[^"]+"', '#define AppVersion "1.4.0"', 1)
           [IO.File]::WriteAllText($installer, $installerText, [Text.UTF8Encoding]::new($false))
 
           "APP_ROOT=$appRoot" >> $env:GITHUB_ENV
@@ -132,7 +198,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           $publishDir = Join-Path $env:APP_ROOT "installer/publish"
-          dotnet publish "$env:PROJECT_PATH" -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version=1.3.1 -o $publishDir
+          dotnet publish "$env:PROJECT_PATH" -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version=1.4.0 -o $publishDir
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Install Inno Setup
@@ -148,14 +214,14 @@ jobs:
           & $compiler "$env:INSTALLER_PATH"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          $builtInstaller = Join-Path $env:APP_ROOT "installer/output/BoostPilot-Setup-1.3.1.exe"
+          $builtInstaller = Join-Path $env:APP_ROOT "installer/output/BoostPilot-Setup-1.4.0.exe"
           if (-not (Test-Path $builtInstaller)) { throw "The installer output was not created." }
           Copy-Item $builtInstaller (Join-Path $env:GITHUB_WORKSPACE "BoostPilot-Setup.exe") -Force
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: BoostPilot-1.3.1-Windows-Installer
+          name: BoostPilot-1.4.0-Windows-Installer
           path: BoostPilot-Setup.exe
           if-no-files-found: error
           retention-days: 30
@@ -163,9 +229,9 @@ jobs:
       - name: Publish stable GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.3.1
+          tag_name: v1.4.0
           target_commitish: main
-          name: BoostPilot 1.3.1
+          name: BoostPilot 1.4.0
           generate_release_notes: true
           prerelease: false
           make_latest: true
