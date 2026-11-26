@@ -5,7 +5,7 @@ on:
     branches: [ main ]
     paths:
       - "BoostPilot-v1.3.1-source.zip"
-      - ".github/workflows/build-uploaded-boostpilot.yml"
+      - ".github/workflows/build-boostpilot-v1.3.1.yml"
   workflow_dispatch:
 
 permissions:
