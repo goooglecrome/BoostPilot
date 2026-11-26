@@ -1,4 +1,4 @@
-name: Build BoostPilot 1.4.0 upgraded app
+name: Build BoostPilot 1.4.1 - redesigned interface
 
 on:
   push:
@@ -48,6 +48,8 @@ jobs:
           $overlayFiles = @(
             "AssistantWindow.xaml",
             "AssistantWindow.xaml.cs",
+            "MainWindow.xaml",
+            "MainWindow.Navigation.cs",
             "MainWindow.Assistant.cs",
             "MainWindow.Persistence.cs",
             "Core/AssistantIntent.cs",
@@ -61,46 +63,39 @@ jobs:
             Copy-Item $source $destination -Force
           }
 
-          # Refresh the existing shell while preserving its existing dashboard, game and restore screens.
-          $xamlPath = Join-Path $appRoot "MainWindow.xaml"
-          $xamlText = [IO.File]::ReadAllText($xamlPath)
-          $xamlText = $xamlText.Replace(
-            'Width="1040" Height="680" MinWidth="820"',
-            'Width="1180" Height="780" MinWidth="920" MinHeight="640" Loaded="AppWindow_Loaded" Closing="AppWindow_Closing"'
-          )
-          $themePairs = [ordered]@{
-            "#050505" = "#070C14"
-            "#0E0E0E" = "#101927"
-            "#1F1F1F" = "#263449"
-            "#8A9099" = "#9AAEC4"
-            "#111111" = "#132033"
-            "#56FB1A" = "#5CF2B0"
-            "#000000" = "#080E17"
-            "#1A1A1A" = "#223047"
-            "#101010" = "#152238"
-            "#F2F2F2" = "#ECF4FF"
-            "#E6E8EB" = "#DCE7F5"
-            "#8C9199" = "#99A9BE"
-          }
-          foreach ($oldColour in $themePairs.Keys) { $xamlText = $xamlText.Replace($oldColour, $themePairs[$oldColour]) }
+          # Replace the original compact shell with the fully redesigned WPF interface.
+          # The complete XAML file is copied from upgrade-overlay/MainWindow.xaml above.
 
-          $optIndex = $xamlText.IndexOf('<ScrollViewer x:Name="OptPanel" Visibility="Collapsed">')
-          if ($optIndex -lt 0) { throw "Could not find the Optimise page in MainWindow.xaml." }
-          $stackTag = '<StackPanel>'
-          $stackIndex = $xamlText.IndexOf($stackTag, $optIndex)
-          if ($stackIndex -lt 0) { throw "Could not find the Optimise page container." }
-          if (-not $xamlText.Contains("SMART OPTIMISATION ASSISTANT")) {
-            $assistantCard = @'
-          <Border Style="{StaticResource Card}"><StackPanel>
-            <TextBlock Text="SMART OPTIMISATION ASSISTANT" Style="{StaticResource Label}"/>
-            <TextBlock Text="Describe what you want from your PC. BoostPilot scans your hardware and prepares a change plan for you to review." Foreground="#9AAEC4" TextWrapping="Wrap" Margin="0,7,0,12"/>
-            <Button Content="Open AI Assistant" Click="Assistant_Click" HorizontalAlignment="Left"/>
-          </StackPanel></Border>
+          # Route page clicks through the persistence-aware navigation controller.
+          $mainWindowCodePath = Join-Path $appRoot "MainWindow.xaml.cs"
+          $mainWindowCode = [IO.File]::ReadAllText($mainWindowCodePath)
+          $oldNav = @'
+              void Nav_Click(object s, RoutedEventArgs e)
+              {
+                  var t = (string)((FrameworkElement)s).Tag;
+                  WizPanel.Visibility = t == "wiz" ? Visibility.Visible : Visibility.Collapsed;
+                  GamePanel.Visibility = t == "game" ? Visibility.Visible : Visibility.Collapsed;
+                  HwPanel.Visibility = t == "hw" ? Visibility.Visible : Visibility.Collapsed;
+                  HwActive(t == "hw");
+                  DashPanel.Visibility = t == "dash" ? Visibility.Visible : Visibility.Collapsed;
+                  OptPanel.Visibility = t == "opt" ? Visibility.Visible : Visibility.Collapsed;
+                  RestPanel.Visibility = t == "rest" ? Visibility.Visible : Visibility.Collapsed;
+              }
           '@
-            $insertAt = $stackIndex + $stackTag.Length
-            $xamlText = $xamlText.Insert($insertAt, [Environment]::NewLine + $assistantCard)
+          $newNav = @'
+              void Nav_Click(object s, RoutedEventArgs e)
+              {
+                  var t = (string)((FrameworkElement)s).Tag;
+                  NavigateToPage(t, true);
+              }
+          '@
+          if (-not $mainWindowCode.Contains($oldNav)) { throw "Could not patch the original navigation handler." }
+          $mainWindowCode = $mainWindowCode.Replace($oldNav, $newNav)
+          if (-not $mainWindowCode.Contains("RestoreLastPage();")) {
+            $mainWindowCode = $mainWindowCode.Replace("ShowStep(0); InitGames();", "ShowStep(0); RestoreLastPage(); InitGames();")
           }
-          [IO.File]::WriteAllText($xamlPath, $xamlText, [Text.UTF8Encoding]::new($false))
+          if (-not $mainWindowCode.Contains("RestoreLastPage();")) { throw "Could not add saved-page restoration to startup." }
+          [IO.File]::WriteAllText($mainWindowCodePath, $mainWindowCode, [Text.UTF8Encoding]::new($false))
 
           # Add one global System.IO import. Several source files use Path, File,
           # Directory, DriveInfo and file enumeration APIs without local imports.
@@ -180,11 +175,11 @@ jobs:
           }
 
           # The uploaded project says 0.3.0. Publish it as the next OG release after 1.2.1.
-          $projectText = [regex]::Replace($projectText, '<Version>[^<]+</Version>', '<Version>1.4.0</Version>', 1)
+          $projectText = [regex]::Replace($projectText, '<Version>[^<]+</Version>', '<Version>1.4.1</Version>', 1)
           [IO.File]::WriteAllText($project, $projectText, [Text.UTF8Encoding]::new($false))
 
           $installerText = [IO.File]::ReadAllText($installer)
-          $installerText = [regex]::Replace($installerText, '#define\s+AppVersion\s+"[^"]+"', '#define AppVersion "1.4.0"', 1)
+          $installerText = [regex]::Replace($installerText, '#define\s+AppVersion\s+"[^"]+"', '#define AppVersion "1.4.1"', 1)
           [IO.File]::WriteAllText($installer, $installerText, [Text.UTF8Encoding]::new($false))
 
           "APP_ROOT=$appRoot" >> $env:GITHUB_ENV
@@ -198,7 +193,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           $publishDir = Join-Path $env:APP_ROOT "installer/publish"
-          dotnet publish "$env:PROJECT_PATH" -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version=1.4.0 -o $publishDir
+          dotnet publish "$env:PROJECT_PATH" -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version=1.4.1 -o $publishDir
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Install Inno Setup
@@ -214,14 +209,14 @@ jobs:
           & $compiler "$env:INSTALLER_PATH"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          $builtInstaller = Join-Path $env:APP_ROOT "installer/output/BoostPilot-Setup-1.4.0.exe"
+          $builtInstaller = Join-Path $env:APP_ROOT "installer/output/BoostPilot-Setup-1.4.1.exe"
           if (-not (Test-Path $builtInstaller)) { throw "The installer output was not created." }
           Copy-Item $builtInstaller (Join-Path $env:GITHUB_WORKSPACE "BoostPilot-Setup.exe") -Force
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: BoostPilot-1.4.0-Windows-Installer
+          name: BoostPilot-1.4.1-Windows-Installer
           path: BoostPilot-Setup.exe
           if-no-files-found: error
           retention-days: 30
@@ -229,9 +224,9 @@ jobs:
       - name: Publish stable GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.4.0
+          tag_name: v1.4.1
           target_commitish: main
-          name: BoostPilot 1.4.0
+          name: BoostPilot 1.4.1
           generate_release_notes: true
           prerelease: false
           make_latest: true
