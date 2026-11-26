@@ -1,0 +1,174 @@
+name: Build BoostPilot 1.3.1 from uploaded source
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "BoostPilot-v1.3.1-source.zip"
+      - ".github/workflows/build-uploaded-boostpilot.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Extract and prepare source
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:GITHUB_WORKSPACE "BoostPilot-v1.3.1-source.zip"
+          if (-not (Test-Path $archive)) {
+            throw "Upload BoostPilot-v1.3.1-source.zip to the repository root first."
+          }
+
+          $buildRoot = Join-Path $env:GITHUB_WORKSPACE "build"
+          Expand-Archive -Path $archive -DestinationPath $buildRoot -Force
+
+          $appRoot = Join-Path $buildRoot "BoostPilot"
+          $project = Join-Path $appRoot "BoostPilot.csproj"
+          $installer = Join-Path $appRoot "installer/BoostPilot.iss"
+
+          if (-not (Test-Path $project)) { throw "The ZIP does not contain BoostPilot/BoostPilot.csproj." }
+          if (-not (Test-Path $installer)) { throw "The ZIP does not contain the Inno Setup installer script." }
+
+          # Add one global System.IO import. Several source files use Path, File,
+          # Directory, DriveInfo and file enumeration APIs without local imports.
+          $globalUsings = Join-Path $appRoot "GlobalUsings.cs"
+          [IO.File]::WriteAllText($globalUsings, "global using System.IO;`r`n", [Text.UTF8Encoding]::new($false))
+
+          # Replace ComputerInfo from Microsoft.VisualBasic.Devices with the
+          # Windows GlobalMemoryStatusEx API so the app builds without VB Forms.
+          $memoryInfo = @'
+          using System.Runtime.InteropServices;
+
+          namespace BoostPilot.Core;
+
+          internal readonly record struct MemorySnapshot(ulong TotalBytes, ulong AvailableBytes);
+
+          internal static class NativeMemoryInfo
+          {
+              [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+              private struct MemoryStatusEx
+              {
+                  public uint Length;
+                  public uint MemoryLoad;
+                  public ulong TotalPhysical;
+                  public ulong AvailablePhysical;
+                  public ulong TotalPageFile;
+                  public ulong AvailablePageFile;
+                  public ulong TotalVirtual;
+                  public ulong AvailableVirtual;
+                  public ulong AvailableExtendedVirtual;
+              }
+
+              [DllImport("kernel32.dll", SetLastError = true)]
+              [return: MarshalAs(UnmanagedType.Bool)]
+              private static extern bool GlobalMemoryStatusEx(ref MemoryStatusEx buffer);
+
+              public static MemorySnapshot Read()
+              {
+                  var status = new MemoryStatusEx { Length = (uint)Marshal.SizeOf<MemoryStatusEx>() };
+                  if (!GlobalMemoryStatusEx(ref status))
+                      return new MemorySnapshot(0, 0);
+
+                  return new MemorySnapshot(status.TotalPhysical, status.AvailablePhysical);
+              }
+          }
+          '@
+          $memoryInfoPath = Join-Path $appRoot "Core/NativeMemoryInfo.cs"
+          [IO.File]::WriteAllText($memoryInfoPath, $memoryInfo, [Text.UTF8Encoding]::new($false))
+
+          $metricsPath = Join-Path $appRoot "Core/Metrics.cs"
+          $metricsText = [IO.File]::ReadAllText($metricsPath)
+          $metricsPattern = '(?m)^\s*var ci = new Microsoft\.VisualBasic\.Devices\.ComputerInfo\(\);\r?\n\s*double total = ci\.TotalPhysicalMemory / 1073741824\.0, free = ci\.AvailablePhysicalMemory / 1073741824\.0;'
+          $metricsReplacement = "                  var memory = NativeMemoryInfo.Read();`r`n                  double total = memory.TotalBytes / 1073741824.0, free = memory.AvailableBytes / 1073741824.0;"
+          $metricsText = [regex]::Replace($metricsText, $metricsPattern, $metricsReplacement, [Text.RegularExpressions.RegexOptions]::Multiline)
+          if ($metricsText -match 'Microsoft\.VisualBasic\.Devices') { throw "The Visual Basic memory reader remains in Core/Metrics.cs." }
+          [IO.File]::WriteAllText($metricsPath, $metricsText, [Text.UTF8Encoding]::new($false))
+
+          $wizardPath = Join-Path $appRoot "Core/Wizard.cs"
+          $wizardText = [IO.File]::ReadAllText($wizardPath)
+          $wizardPattern = '(?m)^\s*var ci = new Microsoft\.VisualBasic\.Devices\.ComputerInfo\(\);'
+          $wizardText = [regex]::Replace($wizardText, $wizardPattern, '                  var memory = NativeMemoryInfo.Read();', [Text.RegularExpressions.RegexOptions]::Multiline)
+          $wizardText = $wizardText.Replace('ci.TotalPhysicalMemory / 1073741824.0', 'memory.TotalBytes / 1073741824.0')
+          if ($wizardText -match 'Microsoft\.VisualBasic\.Devices|ci\.TotalPhysicalMemory') { throw "The Visual Basic memory reader remains in Core/Wizard.cs." }
+          [IO.File]::WriteAllText($wizardPath, $wizardText, [Text.UTF8Encoding]::new($false))
+
+          # Override the older vulnerable transitive SQLitePCLRaw dependency.
+          # Version 2.1.14 is newer than the affected <= 2.1.11 range.
+          $projectText = [IO.File]::ReadAllText($project)
+          if ($projectText -notmatch 'SQLitePCLRaw\.bundle_e_sqlite3') {
+            $sqliteReference = '  <ItemGroup><PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.14" /></ItemGroup>'
+            $projectText = $projectText.Replace('</Project>', $sqliteReference + "`r`n</Project>")
+          }
+
+          # The uploaded project says 0.3.0. Publish it as the next OG release after 1.2.1.
+          $projectText = [regex]::Replace($projectText, '<Version>[^<]+</Version>', '<Version>1.3.1</Version>', 1)
+          [IO.File]::WriteAllText($project, $projectText, [Text.UTF8Encoding]::new($false))
+
+          $installerText = [IO.File]::ReadAllText($installer)
+          $installerText = [regex]::Replace($installerText, '#define\s+AppVersion\s+"[^"]+"', '#define AppVersion "1.3.1"', 1)
+          [IO.File]::WriteAllText($installer, $installerText, [Text.UTF8Encoding]::new($false))
+
+          "APP_ROOT=$appRoot" >> $env:GITHUB_ENV
+          "PROJECT_PATH=$project" >> $env:GITHUB_ENV
+          "INSTALLER_PATH=$installer" >> $env:GITHUB_ENV
+
+      - name: Restore and publish Windows app
+        shell: pwsh
+        run: |
+          dotnet restore "$env:PROJECT_PATH"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $publishDir = Join-Path $env:APP_ROOT "installer/publish"
+          dotnet publish "$env:PROJECT_PATH" -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version=1.3.1 -o $publishDir
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $programFilesX86 = [Environment]::GetFolderPath("ProgramFilesX86")
+          $compiler = Join-Path $programFilesX86 "Inno Setup 6/ISCC.exe"
+          if (-not (Test-Path $compiler)) { throw "Inno Setup compiler was not found." }
+
+          & $compiler "$env:INSTALLER_PATH"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $builtInstaller = Join-Path $env:APP_ROOT "installer/output/BoostPilot-Setup-1.3.1.exe"
+          if (-not (Test-Path $builtInstaller)) { throw "The installer output was not created." }
+          Copy-Item $builtInstaller (Join-Path $env:GITHUB_WORKSPACE "BoostPilot-Setup.exe") -Force
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BoostPilot-1.3.1-Windows-Installer
+          path: BoostPilot-Setup.exe
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish stable GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.3.1
+          target_commitish: main
+          name: BoostPilot 1.3.1
+          generate_release_notes: true
+          prerelease: false
+          make_latest: true
+          files: BoostPilot-Setup.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
